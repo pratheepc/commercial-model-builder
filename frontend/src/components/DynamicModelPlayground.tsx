@@ -304,7 +304,127 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                 <p className="text-muted-foreground">{currentModel.description}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
+                            <Dialog open={isUnitTypesOpen} onOpenChange={setIsUnitTypesOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" className="flex items-center gap-2">
+                                        <TrendingUp className="h-4 w-4" />
+                                        Unit Types ({currentModel.unit_types?.length || 0})
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[600px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Unit Types Configuration</DialogTitle>
+                                        <DialogDescription>
+                                            Configure the unit types and their growth parameters for your pricing model.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4 max-h-[500px] overflow-y-auto">
+                                        {currentModel.unit_types?.map((unitType, index) => (
+                                            <div key={unitType.id} className="space-y-3 p-4 border rounded-lg">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-sm font-medium">Unit Type {index + 1}</Label>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const updatedUnitTypes = currentModel.unit_types?.filter((_, i) => i !== index) || [];
+                                                            setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                            saveToDatabase({ ...currentModel, unit_types: updatedUnitTypes });
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <Label htmlFor={`unit-name-${index}`}>Name</Label>
+                                                        <Input
+                                                            id={`unit-name-${index}`}
+                                                            value={unitType.name}
+                                                            onChange={(e) => {
+                                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                updatedUnitTypes[index] = { ...unitType, name: e.target.value };
+                                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor={`starting-units-${index}`}>Starting Units</Label>
+                                                        <NumberInput
+                                                            id={`starting-units-${index}`}
+                                                            value={unitType.starting_units}
+                                                            onChange={(value) => {
+                                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                updatedUnitTypes[index] = { ...unitType, starting_units: value };
+                                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <Label htmlFor={`growth-type-${index}`}>Growth Type</Label>
+                                                        <Select
+                                                            value={unitType.growth_type}
+                                                            onValueChange={(value: 'percentage' | 'fixed') => {
+                                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                updatedUnitTypes[index] = { ...unitType, growth_type: value };
+                                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                            }}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="percentage">Percentage</SelectItem>
+                                                                <SelectItem value="fixed">Fixed Units</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor={`growth-value-${index}`}>Growth Value</Label>
+                                                        <NumberInput
+                                                            id={`growth-value-${index}`}
+                                                            value={unitType.growth_value}
+                                                            onChange={(value) => {
+                                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                updatedUnitTypes[index] = { ...unitType, growth_value: value };
+                                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        <Button
+                                            variant="outline"
+                                            className="w-full flex items-center gap-2"
+                                            onClick={() => {
+                                                const newUnitType: ModelUnitType = {
+                                                    id: `unit-type-${Date.now()}`,
+                                                    model_id: currentModel.id,
+                                                    name: 'New Unit Type',
+                                                    starting_units: 100,
+                                                    growth_type: 'percentage',
+                                                    growth_value: 10,
+                                                    created_at: new Date().toISOString(),
+                                                    updated_at: new Date().toISOString()
+                                                };
+                                                setCurrentModel(prev => ({ 
+                                                    ...prev, 
+                                                    unit_types: [...(prev.unit_types || []), newUnitType] 
+                                                }));
+                                            }}
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Add Unit Type
+                                        </Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                            
                             {isSaving && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
@@ -361,141 +481,6 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                             </CardContent>
                         </Card>
 
-                        {/* Unit Types Button */}
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <h3 className="font-medium">Unit Types</h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {currentModel.unit_types?.length || 0} unit type(s) configured
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Dialog open={isUnitTypesOpen} onOpenChange={setIsUnitTypesOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" className="flex items-center gap-2">
-                                                <Settings2 className="h-4 w-4" />
-                                                Manage Unit Types
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[600px]">
-                                            <DialogHeader>
-                                                <DialogTitle>Unit Types Configuration</DialogTitle>
-                                                <DialogDescription>
-                                                    Configure the unit types and their growth parameters for your pricing model.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4 py-4 max-h-[500px] overflow-y-auto">
-                                                {currentModel.unit_types?.map((unitType, index) => (
-                                                    <div key={unitType.id} className="space-y-3 p-4 border rounded-lg">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-sm font-medium">Unit Type {index + 1}</Label>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    const updatedUnitTypes = currentModel.unit_types?.filter((_, i) => i !== index) || [];
-                                                                    setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                                    saveToDatabase({ ...currentModel, unit_types: updatedUnitTypes });
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-3">
-                                                            <div>
-                                                                <Label htmlFor={`unit-name-${index}`}>Name</Label>
-                                                                <Input
-                                                                    id={`unit-name-${index}`}
-                                                                    value={unitType.name}
-                                                                    onChange={(e) => {
-                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                                        updatedUnitTypes[index] = { ...unitType, name: e.target.value };
-                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label htmlFor={`starting-units-${index}`}>Starting Units</Label>
-                                                                <NumberInput
-                                                                    id={`starting-units-${index}`}
-                                                                    value={unitType.starting_units}
-                                                                    onChange={(value) => {
-                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                                        updatedUnitTypes[index] = { ...unitType, starting_units: value };
-                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-3">
-                                                            <div>
-                                                                <Label htmlFor={`growth-type-${index}`}>Growth Type</Label>
-                                                                <Select
-                                                                    value={unitType.growth_type}
-                                                                    onValueChange={(value: 'percentage' | 'fixed') => {
-                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                                        updatedUnitTypes[index] = { ...unitType, growth_type: value };
-                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                                    }}
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="percentage">Percentage</SelectItem>
-                                                                        <SelectItem value="fixed">Fixed Units</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
-                                                            <div>
-                                                                <Label htmlFor={`growth-value-${index}`}>Growth Value</Label>
-                                                                <NumberInput
-                                                                    id={`growth-value-${index}`}
-                                                                    value={unitType.growth_value}
-                                                                    onChange={(value) => {
-                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                                        updatedUnitTypes[index] = { ...unitType, growth_value: value };
-                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-full flex items-center gap-2"
-                                                    onClick={() => {
-                                                        const newUnitType: ModelUnitType = {
-                                                            id: `unit-type-${Date.now()}`,
-                                                            model_id: currentModel.id,
-                                                            name: 'New Unit Type',
-                                                            starting_units: 100,
-                                                            growth_type: 'percentage',
-                                                            growth_value: 10,
-                                                            created_at: new Date().toISOString(),
-                                                            updated_at: new Date().toISOString()
-                                                        };
-                                                        setCurrentModel(prev => ({ 
-                                                            ...prev, 
-                                                            unit_types: [...(prev.unit_types || []), newUnitType] 
-                                                        }));
-                                                    }}
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                    Add Unit Type
-                                                </Button>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </CardContent>
-                        </Card>
 
                         {/* Modules */}
                         <Card>
