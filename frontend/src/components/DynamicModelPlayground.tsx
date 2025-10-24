@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Trash2, Calculator, TrendingUp, Package, Settings } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ArrowLeft, Plus, Trash2, Calculator, TrendingUp, Package, Settings, Settings2 } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface DynamicModelPlaygroundProps {
@@ -42,6 +43,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         interval: 'monthly' as 'monthly' | 'yearly',
         startDate: new Date().toISOString().split('T')[0]
     });
+    const [isProjectionSettingsOpen, setIsProjectionSettingsOpen] = useState(false);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -321,72 +323,6 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
                     {/* Left Panel - Configuration */}
                     <div className="lg:col-span-1 space-y-6">
-                        {/* Projection Configuration */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Calculator className="h-5 w-5" />
-                                    Projection Settings
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="start-date">Start Date</Label>
-                                        <Input
-                                            id="start-date"
-                                            type="date"
-                                            value={projectionConfig.startDate}
-                                            onChange={(e) => {
-                                                const newConfig = { ...projectionConfig, startDate: e.target.value };
-                                                setProjectionConfig(newConfig);
-                                                generateInitialProjection();
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="periods">Number of Periods</Label>
-                                        <NumberInput
-                                            id="periods"
-                                            value={projectionConfig.periods}
-                                            onChange={(value) => {
-                                                const newConfig = { ...projectionConfig, periods: value };
-                                                setProjectionConfig(newConfig);
-                                                generateInitialProjection();
-                                            }}
-                                            min={1}
-                                            max={60}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label htmlFor="interval">Time Interval</Label>
-                                    <Select
-                                        value={projectionConfig.interval}
-                                        onValueChange={(value: 'monthly' | 'yearly') => {
-                                            const newConfig = { ...projectionConfig, interval: value };
-                                            setProjectionConfig(newConfig);
-                                            generateInitialProjection();
-                                        }}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="monthly">Monthly</SelectItem>
-                                            <SelectItem value="yearly">Yearly</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button
-                                    onClick={generateInitialProjection}
-                                    className="w-full flex items-center gap-2"
-                                >
-                                    <Calculator className="h-4 w-4" />
-                                    Generate Projection
-                                </Button>
-                            </CardContent>
-                        </Card>
 
                         {/* Model Configuration */}
                         <Card>
@@ -815,14 +751,95 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             Edit any unit count to see real-time calculations
                                         </CardDescription>
                                     </div>
-                                    <div className="flex items-center gap-4 text-sm">
-                                        <div>
-                                            <span className="text-muted-foreground">Total Revenue:</span>
-                                            <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Avg {projectionConfig.interval === 'monthly' ? 'Monthly' : 'Yearly'}:</span>
-                                            <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
+                                    <div className="flex items-center gap-4">
+                                        <Dialog open={isProjectionSettingsOpen} onOpenChange={setIsProjectionSettingsOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" className="flex items-center gap-2">
+                                                    <Settings2 className="h-4 w-4" />
+                                                    Projection Settings
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[425px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>Projection Settings</DialogTitle>
+                                                    <DialogDescription>
+                                                        Configure the time period and parameters for your revenue projections.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Label htmlFor="modal-start-date">Start Date</Label>
+                                                            <Input
+                                                                id="modal-start-date"
+                                                                type="date"
+                                                                value={projectionConfig.startDate}
+                                                                onChange={(e) => {
+                                                                    const newConfig = { ...projectionConfig, startDate: e.target.value };
+                                                                    setProjectionConfig(newConfig);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="modal-periods">Number of Periods</Label>
+                                                            <NumberInput
+                                                                id="modal-periods"
+                                                                value={projectionConfig.periods}
+                                                                onChange={(value) => {
+                                                                    const newConfig = { ...projectionConfig, periods: value };
+                                                                    setProjectionConfig(newConfig);
+                                                                }}
+                                                                min={1}
+                                                                max={60}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="modal-interval">Time Interval</Label>
+                                                        <Select
+                                                            value={projectionConfig.interval}
+                                                            onValueChange={(value: 'monthly' | 'yearly') => {
+                                                                const newConfig = { ...projectionConfig, interval: value };
+                                                                setProjectionConfig(newConfig);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="monthly">Monthly</SelectItem>
+                                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => setIsProjectionSettingsOpen(false)}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => {
+                                                                generateInitialProjection();
+                                                                setIsProjectionSettingsOpen(false);
+                                                            }}
+                                                        >
+                                                            Apply Settings
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                        <div className="flex items-center gap-4 text-sm">
+                                            <div>
+                                                <span className="text-muted-foreground">Total Revenue:</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground">Avg {projectionConfig.interval === 'monthly' ? 'Monthly' : 'Yearly'}:</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
