@@ -978,6 +978,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
+                                                    {/* Model Level Components */}
                                                     {/* Units Row */}
                                                     <TableRow>
                                                         <TableCell className="sticky left-0 bg-white z-10 font-medium">
@@ -1006,27 +1007,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                         ))}
                                                     </TableRow>
 
-                                                    {/* Module Fee Rows */}
-                                                    {currentModel.modules.map((module) => (
-                                                        <TableRow key={module.id}>
-                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                                {module.module_name}
-                                                            </TableCell>
-                                                            {projectionResults.map((result, periodIndex) => {
-                                                                const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
-                                                                return (
-                                                                    <TableCell key={periodIndex} className="text-center">
-                                                                        {formatCurrency(moduleFee?.fee || 0)}
-                                                                    </TableCell>
-                                                                );
-                                                            })}
-                                                        </TableRow>
-                                                    ))}
-
-                                                    {/* Minimum Fee Row */}
+                                                    {/* Model Minimum Fee Row */}
                                                     <TableRow>
                                                         <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                            Minimum Fee
+                                                            Model Minimum Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-center">
@@ -1035,10 +1019,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                         ))}
                                                     </TableRow>
 
-                                                    {/* Implementation Fee Row */}
+                                                    {/* Model Implementation Fee Row */}
                                                     <TableRow>
                                                         <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                            Implementation Fee
+                                                            Model Implementation Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-center">
@@ -1047,13 +1031,130 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                         ))}
                                                     </TableRow>
 
-                                                    {/* Total Fee Row */}
-                                                    <TableRow className="border-t-2 border-primary">
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-bold">
-                                                            Total Fee
+                                                    {/* Module Groups */}
+                                                    {currentModel.modules.map((module) => (
+                                                        <React.Fragment key={module.id}>
+                                                            {/* Module Header */}
+                                                            <TableRow className="bg-muted/30">
+                                                                <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary">
+                                                                    {module.module_name}
+                                                                </TableCell>
+                                                                {projectionResults.map((_, index) => (
+                                                                    <TableCell key={index} className="text-center font-bold text-primary">
+                                                                        {module.module_name}
+                                                                    </TableCell>
+                                                                ))}
+                                                            </TableRow>
+
+                                                            {/* Module Monthly Fee */}
+                                                            {module.pricing_type === 'flat' && (
+                                                                <TableRow>
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                        Monthly Fee
+                                                                    </TableCell>
+                                                                    {projectionResults.map((_, index) => (
+                                                                        <TableCell key={index} className="text-center">
+                                                                            {formatCurrency(module.monthly_fee || 0)}
+                                                                        </TableCell>
+                                                                    ))}
+                                                                </TableRow>
+                                                            )}
+
+                                                            {/* Module Per-Unit Fee */}
+                                                            {module.pricing_type === 'per_unit' && (
+                                                                <TableRow>
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                        Rate per Unit
+                                                                    </TableCell>
+                                                                    {projectionResults.map((result, index) => (
+                                                                        <TableCell key={index} className="text-center">
+                                                                            {formatCurrency(module.monthly_fee || 0)} × {formatNumber(result.units)}
+                                                                        </TableCell>
+                                                                    ))}
+                                                                </TableRow>
+                                                            )}
+
+                                                            {/* Module Slab Fees */}
+                                                            {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
+                                                                module.slabs.map((slab, slabIndex) => (
+                                                                    <TableRow key={slabIndex}>
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                            Slab {slabIndex + 1} ({slab.from_units} - {slab.to_units || '∞'})
+                                                                        </TableCell>
+                                                                        {projectionResults.map((result, index) => {
+                                                                            // Calculate fee for this specific slab
+                                                                            const slabStart = slab.from_units;
+                                                                            const slabEnd = slab.to_units || result.units;
+                                                                            const slabRate = slab.rate_per_unit;
+                                                                            
+                                                                            let slabFee = 0;
+                                                                            if (result.units > slabStart) {
+                                                                                const unitsInSlab = Math.min(result.units, slabEnd) - Math.max(slabStart, 0);
+                                                                                slabFee = unitsInSlab * slabRate;
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <TableCell key={index} className="text-center">
+                                                                                    {formatCurrency(slabFee)}
+                                                                                </TableCell>
+                                                                            );
+                                                                        })}
+                                                                    </TableRow>
+                                                                ))
+                                                            )}
+
+                                                            {/* Module Minimum Fee */}
+                                                            {module.module_minimum_fee && module.module_minimum_fee > 0 && (
+                                                                <TableRow>
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                        Module Minimum Fee
+                                                                    </TableCell>
+                                                                    {projectionResults.map((_, index) => (
+                                                                        <TableCell key={index} className="text-center">
+                                                                            {formatCurrency(module.module_minimum_fee || 0)}
+                                                                        </TableCell>
+                                                                    ))}
+                                                                </TableRow>
+                                                            )}
+
+                                                            {/* Module One-time Fee */}
+                                                            {module.one_time_fee && module.one_time_fee > 0 && (
+                                                                <TableRow>
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                        One-time Setup Fee
+                                                                    </TableCell>
+                                                                    {projectionResults.map((_, index) => (
+                                                                        <TableCell key={index} className="text-center">
+                                                                            {index === 0 ? formatCurrency(module.one_time_fee || 0) : formatCurrency(0)}
+                                                                        </TableCell>
+                                                                    ))}
+                                                                </TableRow>
+                                                            )}
+
+                                                            {/* Module Total */}
+                                                            <TableRow className="border-b border-muted">
+                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4">
+                                                                    {module.module_name} Total
+                                                                </TableCell>
+                                                                {projectionResults.map((result, index) => {
+                                                                    const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
+                                                                    return (
+                                                                        <TableCell key={index} className="text-center font-semibold">
+                                                                            {formatCurrency(moduleFee?.fee || 0)}
+                                                                        </TableCell>
+                                                                    );
+                                                                })}
+                                                            </TableRow>
+                                                        </React.Fragment>
+                                                    ))}
+
+                                                    {/* Grand Total Row */}
+                                                    <TableRow className="border-t-2 border-primary bg-primary/5">
+                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-lg">
+                                                            Grand Total
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-center font-bold">
+                                                            <TableCell key={index} className="text-center font-bold text-lg">
                                                                 {formatCurrency(result.total_fee)}
                                                             </TableCell>
                                                         ))}
