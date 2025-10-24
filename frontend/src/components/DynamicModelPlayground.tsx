@@ -1030,19 +1030,19 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                     <TableRow>
                                                         <TableHead className="sticky left-0 bg-white z-10 min-w-[180px]">Module</TableHead>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableHead key={index} className="text-center min-w-[100px]">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium text-sm">
-                                                                        {projectionConfig.interval === 'monthly'
-                                                                            ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                                                                            : new Date(result.date).getFullYear().toString()
-                                                                        }
-                                                                    </span>
-                                                                    <span className="text-xs text-muted-foreground">
-                                                                        P{result.period}
-                                                                    </span>
-                                                                </div>
-                                                            </TableHead>
+                                                                <TableHead key={index} className="text-left min-w-[100px]">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium text-sm">
+                                                                            {projectionConfig.interval === 'monthly'
+                                                                                ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                                                : new Date(result.date).getFullYear().toString()
+                                                                            }
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            P{result.period}
+                                                                        </span>
+                                                                    </div>
+                                                                </TableHead>
                                                         ))}
                                                     </TableRow>
                                                 </TableHeader>
