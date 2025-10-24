@@ -50,12 +50,23 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     const [isModulesOpen, setIsModulesOpen] = useState(true);
     const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
-    // Auto-save function
-    const saveToDatabase = async (updatedModel: Model) => {
-        if (isSaving) return; // Prevent multiple simultaneous saves
+        // Auto-save function
+        const saveToDatabase = async (updatedModel: Model) => {
+            if (isSaving) return; // Prevent multiple simultaneous saves
 
-        setIsSaving(true);
-        try {
+            // Validate that all modules have valid unit types
+            const invalidModules = updatedModel.modules.filter(module => 
+                (module.pricing_type === 'per_unit' || module.pricing_type === 'slab') && 
+                (!module.unit_type_id || module.unit_type_id === '' || module.unit_type_id === 'default')
+            );
+            
+            if (invalidModules.length > 0) {
+                console.warn('Cannot save modules without valid unit types');
+                return;
+            }
+
+            setIsSaving(true);
+            try {
             await apiDataService.updateModel(updatedModel.id, {
                 minimum_fee: updatedModel.minimum_fee,
                 implementation_fee: updatedModel.implementation_fee,
@@ -139,6 +150,26 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     useEffect(() => {
         generateInitialProjection();
     }, [currentModel]);
+
+    // Ensure at least one unit type exists
+    useEffect(() => {
+        if (!currentModel.unit_types || currentModel.unit_types.length === 0) {
+            const defaultUnitType: ModelUnitType = {
+                id: `unit-type-${Date.now()}`,
+                model_id: currentModel.id,
+                name: 'Default Units',
+                starting_units: 100,
+                growth_type: 'percentage',
+                growth_value: 10,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            setCurrentModel(prev => ({ 
+                ...prev, 
+                unit_types: [defaultUnitType] 
+            }));
+        }
+    }, [currentModel.id]);
 
     const generateInitialProjection = async () => {
         if (!currentModel.unit_types || currentModel.unit_types.length === 0) {
@@ -873,7 +904,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             monthly_fee: 0,
                                                             one_time_fee: 0,
                                                             module_minimum_fee: 0,
-                                                            unit_type_id: currentModel.unit_types?.[0]?.id || '',
+                                                            unit_type_id: currentModel.unit_types?.[0]?.id || 'default',
                                                             slabs: [],
                                                             order: currentModel.modules.length
                                                         };
