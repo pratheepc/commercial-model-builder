@@ -777,6 +777,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                 onChange={(e) => {
                                                                     const newConfig = { ...projectionConfig, startDate: e.target.value };
                                                                     setProjectionConfig(newConfig);
+                                                                    generateInitialProjection();
                                                                 }}
                                                             />
                                                         </div>
@@ -788,6 +789,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                 onChange={(value) => {
                                                                     const newConfig = { ...projectionConfig, periods: value };
                                                                     setProjectionConfig(newConfig);
+                                                                    generateInitialProjection();
                                                                 }}
                                                                 min={1}
                                                                 max={60}
@@ -801,6 +803,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             onValueChange={(value: 'monthly' | 'yearly') => {
                                                                 const newConfig = { ...projectionConfig, interval: value };
                                                                 setProjectionConfig(newConfig);
+                                                                generateInitialProjection();
                                                             }}
                                                         >
                                                             <SelectTrigger>
@@ -811,22 +814,6 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                 <SelectItem value="yearly">Yearly</SelectItem>
                                                             </SelectContent>
                                                         </Select>
-                                                    </div>
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            onClick={() => setIsProjectionSettingsOpen(false)}
-                                                        >
-                                                            Cancel
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => {
-                                                                generateInitialProjection();
-                                                                setIsProjectionSettingsOpen(false);
-                                                            }}
-                                                        >
-                                                            Apply Settings
-                                                        </Button>
                                                     </div>
                                                 </div>
                                             </DialogContent>
@@ -848,19 +835,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                 {projectionResults.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <Calculator className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                                        <h3 className="text-lg font-semibold mb-2">No Projections Generated</h3>
+                                        <h3 className="text-lg font-semibold mb-2">No Projections Available</h3>
                                         <p className="text-muted-foreground mb-4">
-                                            Add unit types and modules, then click "Generate Projection" to see revenue forecasts.
+                                            Add unit types and modules to see automatic revenue projections.
                                         </p>
-                                        <Button 
-                                            onClick={() => {
-                                                generateInitialProjection();
-                                            }} 
-                                            className="flex items-center gap-2"
-                                        >
-                                            <Calculator className="h-4 w-4" />
-                                            Generate Projection
-                                        </Button>
                                     </div>
                                 ) : (
                                     <div className="overflow-auto max-h-[600px]">
