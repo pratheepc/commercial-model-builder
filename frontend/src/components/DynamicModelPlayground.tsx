@@ -42,7 +42,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     }, [currentModel]);
 
     const generateInitialProjection = async () => {
-        if (!currentModel.unit_types || currentModel.unit_types.length === 0) return;
+        if (!currentModel.unit_types || currentModel.unit_types.length === 0) {
+            setProjectionResults([]);
+            return;
+        }
         
         try {
             const results = generateProjection(
@@ -52,22 +55,29 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 'monthly'
             );
             
-            const editableResults: EditableProjectionRow[] = results.map((result, index) => ({
-                period: parseInt(result.period),
-                date: new Date().toISOString(), // We'll calculate this properly
-                units: result.units,
-                total_fee: result.total,
-                breakdown: {
-                    module_fees: [],
-                    minimum_fee: 0,
-                    implementation_fee: 0
-                },
-                isEditable: index > 0, // First period is not editable (starting units)
-            }));
+            const editableResults: EditableProjectionRow[] = results.map((result, index) => {
+                const startDate = new Date();
+                const currentDate = new Date(startDate);
+                currentDate.setMonth(startDate.getMonth() + index);
+                
+                return {
+                    period: index + 1,
+                    date: currentDate.toISOString(),
+                    units: result.units,
+                    total_fee: result.total,
+                    breakdown: {
+                        module_fees: [],
+                        minimum_fee: currentModel.minimum_fee,
+                        implementation_fee: currentModel.implementation_fee
+                    },
+                    isEditable: index > 0, // First period is not editable (starting units)
+                };
+            });
             
             setProjectionResults(editableResults);
         } catch (error) {
             console.error('Error generating projection:', error);
+            setProjectionResults([]);
         }
     };
 
@@ -243,25 +253,60 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                         {/* Unit Types */}
                         <Card>
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5" />
-                                    Unit Types
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2">
+                                        <TrendingUp className="h-5 w-5" />
+                                        Unit Types
+                                    </CardTitle>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const newUnitType: ModelUnitType = {
+                                                id: `unit-type-${Date.now()}`,
+                                                model_id: currentModel.id,
+                                                name: 'New Unit Type',
+                                                starting_units: 100,
+                                                growth_type: 'percentage',
+                                                growth_value: 10,
+                                                created_at: new Date().toISOString(),
+                                                updated_at: new Date().toISOString()
+                                            };
+                                            setCurrentModel(prev => ({ 
+                                                ...prev, 
+                                                unit_types: [...(prev.unit_types || []), newUnitType] 
+                                            }));
+                                        }}
+                                    >
+                                        <Plus className="h-4 w-4 mr-1" />
+                                        Add Unit Type
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 {currentModel.unit_types?.map((unitType, index) => (
                                     <div key={unitType.id} className="space-y-3 p-3 border rounded-lg">
-                                        <div>
+                                        <div className="flex items-center justify-between">
                                             <Label>Unit Type Name</Label>
-                                            <Input
-                                                value={unitType.name}
-                                                onChange={(e) => {
-                                                    const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                    updatedUnitTypes[index] = { ...unitType, name: e.target.value };
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const updatedUnitTypes = currentModel.unit_types?.filter((_, i) => i !== index) || [];
                                                     setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
                                                 }}
-                                            />
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
+                                        <Input
+                                            value={unitType.name}
+                                            onChange={(e) => {
+                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                updatedUnitTypes[index] = { ...unitType, name: e.target.value };
+                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                            }}
+                                        />
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <Label>Starting Units</Label>
@@ -427,34 +472,56 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             Edit any unit count to see real-time calculations
                                         </CardDescription>
                                     </div>
-                                    <div className="flex items-center gap-4 text-sm">
-                                        <div>
-                                            <span className="text-muted-foreground">Total Revenue:</span>
-                                            <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Avg Monthly:</span>
-                                            <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
+                                    <div className="flex items-center gap-4">
+                                        <Button
+                                            onClick={generateInitialProjection}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Calculator className="h-4 w-4" />
+                                            Generate Projection
+                                        </Button>
+                                        <div className="flex items-center gap-4 text-sm">
+                                            <div>
+                                                <span className="text-muted-foreground">Total Revenue:</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground">Avg Monthly:</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="overflow-auto max-h-[600px]">
-                                    <Table>
-                                        <TableHeader className="sticky top-0 bg-white">
-                                            <TableRow>
-                                                <TableHead>Period</TableHead>
-                                                <TableHead>Date</TableHead>
-                                                <TableHead>Units</TableHead>
-                                                <TableHead>Total Fee</TableHead>
-                                                <TableHead>Module Fees</TableHead>
-                                                <TableHead>Min Fee</TableHead>
-                                                <TableHead>Impl Fee</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {projectionResults.map((result, index) => (
+                                {projectionResults.length === 0 ? (
+                                    <div className="p-8 text-center">
+                                        <Calculator className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                        <h3 className="text-lg font-semibold mb-2">No Projections Generated</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Add unit types and modules, then click "Generate Projection" to see revenue forecasts.
+                                        </p>
+                                        <Button onClick={generateInitialProjection} className="flex items-center gap-2">
+                                            <Calculator className="h-4 w-4" />
+                                            Generate Projection
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-auto max-h-[600px]">
+                                        <Table>
+                                            <TableHeader className="sticky top-0 bg-white">
+                                                <TableRow>
+                                                    <TableHead>Period</TableHead>
+                                                    <TableHead>Date</TableHead>
+                                                    <TableHead>Units</TableHead>
+                                                    <TableHead>Total Fee</TableHead>
+                                                    <TableHead>Module Fees</TableHead>
+                                                    <TableHead>Min Fee</TableHead>
+                                                    <TableHead>Impl Fee</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {projectionResults.map((result, index) => (
                                                 <TableRow key={index}>
                                                     <TableCell className="font-medium">{result.period}</TableCell>
                                                     <TableCell>{new Date(result.date).toLocaleDateString()}</TableCell>
@@ -492,10 +559,11 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     <TableCell>{formatCurrency(result.breakdown.minimum_fee)}</TableCell>
                                                     <TableCell>{formatCurrency(result.breakdown.implementation_fee)}</TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
