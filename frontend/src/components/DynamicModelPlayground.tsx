@@ -44,18 +44,19 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         startDate: new Date().toISOString().split('T')[0]
     });
     const [isProjectionSettingsOpen, setIsProjectionSettingsOpen] = useState(false);
+    const [isUnitTypesOpen, setIsUnitTypesOpen] = useState(false);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
         if (isSaving) return; // Prevent multiple simultaneous saves
-        
+
         setIsSaving(true);
         try {
             await apiDataService.updateModel(updatedModel.id, {
                 minimum_fee: updatedModel.minimum_fee,
                 implementation_fee: updatedModel.implementation_fee,
             });
-            
+
             // Save unit types
             for (const unitType of updatedModel.unit_types || []) {
                 if (unitType.id.startsWith('unit-type-')) {
@@ -76,7 +77,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     });
                 }
             }
-            
+
             // Save modules
             for (const module of updatedModel.modules || []) {
                 if (module.id.startsWith('module-')) {
@@ -124,7 +125,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             setProjectionResults([]);
             return;
         }
-        
+
         try {
             const results = generateProjection(
                 currentModel,
@@ -132,21 +133,21 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 projectionConfig.periods,
                 projectionConfig.interval
             );
-            
+
             const editableResults: EditableProjectionRow[] = results.map((result, index) => {
                 const startDate = new Date(projectionConfig.startDate);
                 const currentDate = new Date(startDate);
-                
+
                 if (projectionConfig.interval === 'monthly') {
                     currentDate.setMonth(startDate.getMonth() + index);
                 } else {
                     currentDate.setFullYear(startDate.getFullYear() + index);
                 }
-                
+
                 // Calculate module fees for this period
                 const moduleFees: Array<{ module_name: string; fee: number }> = [];
                 let totalModuleFees = 0;
-                
+
                 for (const module of currentModel.modules) {
                     const moduleFee = calculateModuleFee(result.units, module);
                     totalModuleFees += moduleFee;
@@ -155,10 +156,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                         fee: moduleFee
                     });
                 }
-                
+
                 // Apply minimum fee
                 const finalFee = Math.max(totalModuleFees, currentModel.minimum_fee);
-                
+
                 return {
                     period: index + 1,
                     date: currentDate.toISOString(),
@@ -172,7 +173,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     isEditable: index > 0, // First period is not editable (starting units)
                 };
             });
-            
+
             setProjectionResults(editableResults);
         } catch (error) {
             console.error('Error generating projection:', error);
@@ -182,26 +183,26 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
     const handleUnitChange = (rowIndex: number, newUnits: number) => {
         if (rowIndex === 0) return; // Don't allow editing first period
-        
+
         const updatedResults = [...projectionResults];
         updatedResults[rowIndex].units = newUnits;
-        
+
         // Recalculate fees for this period
         const recalculatedFee = calculateTotalFeeForPeriod(updatedResults[rowIndex].units, currentModel);
         updatedResults[rowIndex].total_fee = recalculatedFee.total;
         updatedResults[rowIndex].breakdown = recalculatedFee.breakdown;
-        
+
         // Recalculate subsequent periods based on growth
         for (let i = rowIndex + 1; i < updatedResults.length; i++) {
             const growthFactor = calculateGrowthFactor(currentModel.unit_types[0], i - rowIndex);
             const newUnits = Math.round(updatedResults[rowIndex].units * growthFactor);
             updatedResults[i].units = newUnits;
-            
+
             const recalculatedFee = calculateTotalFeeForPeriod(newUnits, currentModel);
             updatedResults[i].total_fee = recalculatedFee.total;
             updatedResults[i].breakdown = recalculatedFee.breakdown;
         }
-        
+
         setProjectionResults(updatedResults);
     };
 
@@ -216,7 +217,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     const calculateTotalFeeForPeriod = (units: number, model: Model) => {
         let totalFee = 0;
         const moduleFees: Array<{ module_name: string; fee: number }> = [];
-        
+
         // Calculate module fees
         for (const module of model.modules) {
             const moduleFee = calculateModuleFee(units, module);
@@ -226,14 +227,14 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 fee: moduleFee
             });
         }
-        
+
         // Add minimum fee
         const minimumFee = model.minimum_fee;
         totalFee = Math.max(totalFee, minimumFee);
-        
+
         // Add implementation fee (only for first period)
         const implementationFee = model.implementation_fee;
-        
+
         return {
             total: totalFee + implementationFee,
             breakdown: {
@@ -251,14 +252,14 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
     const handleCellSave = () => {
         if (!editingCell) return;
-        
+
         const { row, field } = editingCell;
         const newValue = parseFloat(tempValue);
-        
+
         if (field === 'units') {
             handleUnitChange(row, newValue);
         }
-        
+
         setEditingCell(null);
         setTempValue('');
     };
@@ -360,108 +361,139 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                             </CardContent>
                         </Card>
 
-                        {/* Unit Types */}
+                        {/* Unit Types Button */}
                         <Card>
-                            <CardHeader>
+                            <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <TrendingUp className="h-5 w-5" />
-                                        Unit Types
-                                    </CardTitle>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const newUnitType: ModelUnitType = {
-                                                id: `unit-type-${Date.now()}`,
-                                                model_id: currentModel.id,
-                                                name: 'New Unit Type',
-                                                starting_units: 100,
-                                                growth_type: 'percentage',
-                                                growth_value: 10,
-                                                created_at: new Date().toISOString(),
-                                                updated_at: new Date().toISOString()
-                                            };
-                                            setCurrentModel(prev => ({ 
-                                                ...prev, 
-                                                unit_types: [...(prev.unit_types || []), newUnitType] 
-                                            }));
-                                        }}
-                                    >
-                                        <Plus className="h-4 w-4 mr-1" />
-                                        Add Unit Type
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {currentModel.unit_types?.map((unitType, index) => (
-                                    <div key={unitType.id} className="space-y-3 p-3 border rounded-lg">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Unit Type Name</Label>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const updatedUnitTypes = currentModel.unit_types?.filter((_, i) => i !== index) || [];
-                                                    setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <Input
-                                            value={unitType.name}
-                                            onChange={(e) => {
-                                                const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                updatedUnitTypes[index] = { ...unitType, name: e.target.value };
-                                                setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                            }}
-                                        />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <Label>Starting Units</Label>
-                                                <NumberInput
-                                                    value={unitType.starting_units}
-                                                    onChange={(value) => {
-                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                        updatedUnitTypes[index] = { ...unitType, starting_units: value };
-                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                    }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label>Growth Value</Label>
-                                                <NumberInput
-                                                    value={unitType.growth_value}
-                                                    onChange={(value) => {
-                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                        updatedUnitTypes[index] = { ...unitType, growth_value: value };
-                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center gap-3">
+                                        <TrendingUp className="h-5 w-5 text-muted-foreground" />
                                         <div>
-                                            <Label>Growth Type</Label>
-                                            <Select
-                                                value={unitType.growth_type}
-                                                onValueChange={(value: 'percentage' | 'fixed') => {
-                                                    const updatedUnitTypes = [...(currentModel.unit_types || [])];
-                                                    updatedUnitTypes[index] = { ...unitType, growth_type: value };
-                                                    setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
-                                                }}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="percentage">Percentage</SelectItem>
-                                                    <SelectItem value="fixed">Fixed Units</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <h3 className="font-medium">Unit Types</h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {currentModel.unit_types?.length || 0} unit type(s) configured
+                                            </p>
                                         </div>
                                     </div>
-                                ))}
+                                    <Dialog open={isUnitTypesOpen} onOpenChange={setIsUnitTypesOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" className="flex items-center gap-2">
+                                                <Settings2 className="h-4 w-4" />
+                                                Manage Unit Types
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[600px]">
+                                            <DialogHeader>
+                                                <DialogTitle>Unit Types Configuration</DialogTitle>
+                                                <DialogDescription>
+                                                    Configure the unit types and their growth parameters for your pricing model.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4 max-h-[500px] overflow-y-auto">
+                                                {currentModel.unit_types?.map((unitType, index) => (
+                                                    <div key={unitType.id} className="space-y-3 p-4 border rounded-lg">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-sm font-medium">Unit Type {index + 1}</Label>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    const updatedUnitTypes = currentModel.unit_types?.filter((_, i) => i !== index) || [];
+                                                                    setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                                    saveToDatabase({ ...currentModel, unit_types: updatedUnitTypes });
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div>
+                                                                <Label htmlFor={`unit-name-${index}`}>Name</Label>
+                                                                <Input
+                                                                    id={`unit-name-${index}`}
+                                                                    value={unitType.name}
+                                                                    onChange={(e) => {
+                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                        updatedUnitTypes[index] = { ...unitType, name: e.target.value };
+                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label htmlFor={`starting-units-${index}`}>Starting Units</Label>
+                                                                <NumberInput
+                                                                    id={`starting-units-${index}`}
+                                                                    value={unitType.starting_units}
+                                                                    onChange={(value) => {
+                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                        updatedUnitTypes[index] = { ...unitType, starting_units: value };
+                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div>
+                                                                <Label htmlFor={`growth-type-${index}`}>Growth Type</Label>
+                                                                <Select
+                                                                    value={unitType.growth_type}
+                                                                    onValueChange={(value: 'percentage' | 'fixed') => {
+                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                        updatedUnitTypes[index] = { ...unitType, growth_type: value };
+                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="percentage">Percentage</SelectItem>
+                                                                        <SelectItem value="fixed">Fixed Units</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div>
+                                                                <Label htmlFor={`growth-value-${index}`}>Growth Value</Label>
+                                                                <NumberInput
+                                                                    id={`growth-value-${index}`}
+                                                                    value={unitType.growth_value}
+                                                                    onChange={(value) => {
+                                                                        const updatedUnitTypes = [...(currentModel.unit_types || [])];
+                                                                        updatedUnitTypes[index] = { ...unitType, growth_value: value };
+                                                                        setCurrentModel(prev => ({ ...prev, unit_types: updatedUnitTypes }));
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full flex items-center gap-2"
+                                                    onClick={() => {
+                                                        const newUnitType: ModelUnitType = {
+                                                            id: `unit-type-${Date.now()}`,
+                                                            model_id: currentModel.id,
+                                                            name: 'New Unit Type',
+                                                            starting_units: 100,
+                                                            growth_type: 'percentage',
+                                                            growth_value: 10,
+                                                            created_at: new Date().toISOString(),
+                                                            updated_at: new Date().toISOString()
+                                                        };
+                                                        setCurrentModel(prev => ({ 
+                                                            ...prev, 
+                                                            unit_types: [...(prev.unit_types || []), newUnitType] 
+                                                        }));
+                                                    }}
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                    Add Unit Type
+                                                </Button>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -490,7 +522,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <Label>Monthly Fee</Label>
@@ -515,7 +547,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     />
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <Label>One-time Fee</Label>
@@ -540,7 +572,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     />
                                                 </div>
                                             </div>
-                                            
+
                                             <div>
                                                 <Label>Module Implementation Fee</Label>
                                                 <NumberInput
@@ -552,7 +584,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     }}
                                                 />
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <Label>Pricing Type</Label>
@@ -597,7 +629,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     </Select>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Slab Configuration */}
                                             {module.pricing_type === 'slab' && (
                                                 <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
@@ -607,66 +639,66 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             module.slabs.map((slab, slabIndex) => {
                                                                 const isLastSlab = slabIndex === module.slabs.length - 1;
                                                                 return (
-                                                                <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
-                                                                    <NumberInput
-                                                                        value={slab.from_units}
-                                                                        onChange={(value) => {
-                                                                            const updatedModules = [...currentModel.modules];
-                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                            updatedSlabs[slabIndex] = { ...slab, from_units: value };
-                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        }}
-                                                                        placeholder="From"
-                                                                        className="w-20"
-                                                                    />
-                                                                    <span className="text-muted-foreground whitespace-nowrap">
-                                                                        {isLastSlab ? "and above" : "to"}
-                                                                    </span>
-                                                                    {!isLastSlab && (
+                                                                    <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
                                                                         <NumberInput
-                                                                            value={slab.to_units || 0}
+                                                                            value={slab.from_units}
                                                                             onChange={(value) => {
                                                                                 const updatedModules = [...currentModel.modules];
                                                                                 const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                                updatedSlabs[slabIndex] = { ...slab, to_units: value };
+                                                                                updatedSlabs[slabIndex] = { ...slab, from_units: value };
                                                                                 updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
                                                                                 setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
                                                                             }}
-                                                                            placeholder="To"
+                                                                            placeholder="From"
                                                                             className="w-20"
                                                                         />
-                                                                    )}
-                                                                    {isLastSlab && (
-                                                                        <div className="w-20 text-sm text-muted-foreground flex items-center justify-center flex-shrink-0">
-                                                                            ∞
-                                                                        </div>
-                                                                    )}
-                                                                    <NumberInput
-                                                                        value={slab.rate_per_unit}
-                                                                        onChange={(value) => {
-                                                                            const updatedModules = [...currentModel.modules];
-                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                            updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
-                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        }}
-                                                                        placeholder="Rate"
-                                                                        className="w-24"
-                                                                    />
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            const updatedModules = [...currentModel.modules];
-                                                                            const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
-                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
+                                                                        <span className="text-muted-foreground whitespace-nowrap">
+                                                                            {isLastSlab ? "and above" : "to"}
+                                                                        </span>
+                                                                        {!isLastSlab && (
+                                                                            <NumberInput
+                                                                                value={slab.to_units || 0}
+                                                                                onChange={(value) => {
+                                                                                    const updatedModules = [...currentModel.modules];
+                                                                                    const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                                    updatedSlabs[slabIndex] = { ...slab, to_units: value };
+                                                                                    updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                                }}
+                                                                                placeholder="To"
+                                                                                className="w-20"
+                                                                            />
+                                                                        )}
+                                                                        {isLastSlab && (
+                                                                            <div className="w-20 text-sm text-muted-foreground flex items-center justify-center flex-shrink-0">
+                                                                                ∞
+                                                                            </div>
+                                                                        )}
+                                                                        <NumberInput
+                                                                            value={slab.rate_per_unit}
+                                                                            onChange={(value) => {
+                                                                                const updatedModules = [...currentModel.modules];
+                                                                                const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                                updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
+                                                                                updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                            }}
+                                                                            placeholder="Rate"
+                                                                            className="w-24"
+                                                                        />
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                const updatedModules = [...currentModel.modules];
+                                                                                const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
+                                                                                updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
                                                                 );
                                                             })
                                                         ) : (
@@ -681,10 +713,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                 const updatedModules = [...currentModel.modules];
                                                                 const existingSlabs = updatedModules[index].slabs || [];
                                                                 const lastSlab = existingSlabs[existingSlabs.length - 1];
-                                                                
+
                                                                 // If there are existing slabs, start the new one from where the last one ended
                                                                 const fromUnits = lastSlab ? (lastSlab.to_units || 0) + 1 : 0;
-                                                                
+
                                                                 const newSlab = {
                                                                     id: `slab-${Date.now()}`,
                                                                     from_units: fromUnits,
@@ -707,7 +739,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             )}
                                         </div>
                                     ))}
-                                    
+
                                     <Button
                                         variant="outline"
                                         className="w-full"
@@ -856,48 +888,48 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             </TableHeader>
                                             <TableBody>
                                                 {projectionResults.map((result, index) => (
-                                                <TableRow key={index}>
-                                                    <TableCell className="font-medium">{result.period}</TableCell>
-                                                    <TableCell>
-                                                        {projectionConfig.interval === 'monthly' 
-                                                            ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                                                            : new Date(result.date).getFullYear().toString()
-                                                        }
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {editingCell?.row === index && editingCell?.field === 'units' ? (
-                                                            <Input
-                                                                value={tempValue}
-                                                                onChange={(e) => setTempValue(e.target.value)}
-                                                                onKeyDown={handleKeyPress}
-                                                                onBlur={handleCellSave}
-                                                                autoFocus
-                                                                className="w-20"
-                                                            />
-                                                        ) : (
-                                                            <div
-                                                                className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
-                                                                onClick={() => result.isEditable && handleCellEdit(index, 'units', result.units)}
-                                                            >
-                                                                {formatNumber(result.units)}
-                                                            </div>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="font-semibold">
-                                                        {formatCurrency(result.total_fee)}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="space-y-1">
-                                                            {result.breakdown.module_fees.map((fee, feeIndex) => (
-                                                                <div key={feeIndex} className="text-xs">
-                                                                    {fee.module_name}: {formatCurrency(fee.fee)}
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium">{result.period}</TableCell>
+                                                        <TableCell>
+                                                            {projectionConfig.interval === 'monthly'
+                                                                ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                                : new Date(result.date).getFullYear().toString()
+                                                            }
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {editingCell?.row === index && editingCell?.field === 'units' ? (
+                                                                <Input
+                                                                    value={tempValue}
+                                                                    onChange={(e) => setTempValue(e.target.value)}
+                                                                    onKeyDown={handleKeyPress}
+                                                                    onBlur={handleCellSave}
+                                                                    autoFocus
+                                                                    className="w-20"
+                                                                />
+                                                            ) : (
+                                                                <div
+                                                                    className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
+                                                                    onClick={() => result.isEditable && handleCellEdit(index, 'units', result.units)}
+                                                                >
+                                                                    {formatNumber(result.units)}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>{formatCurrency(result.breakdown.minimum_fee)}</TableCell>
-                                                    <TableCell>{formatCurrency(result.breakdown.implementation_fee)}</TableCell>
-                                                </TableRow>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="font-semibold">
+                                                            {formatCurrency(result.total_fee)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-1">
+                                                                {result.breakdown.module_fees.map((fee, feeIndex) => (
+                                                                    <div key={feeIndex} className="text-xs">
+                                                                        {fee.module_name}: {formatCurrency(fee.fee)}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>{formatCurrency(result.breakdown.minimum_fee)}</TableCell>
+                                                        <TableCell>{formatCurrency(result.breakdown.implementation_fee)}</TableCell>
+                                                    </TableRow>
                                                 ))}
                                             </TableBody>
                                         </Table>
