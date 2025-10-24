@@ -214,8 +214,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-hidden">
-                <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+            <div className="flex-1 overflow-auto">
+                <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
                     {/* Left Panel - Configuration */}
                     <div className="lg:col-span-1 space-y-6">
                         {/* Model Configuration */}
@@ -490,10 +490,11 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             
                                             {/* Slab Configuration */}
                                             {module.pricing_type === 'slab' && (
-                                                <div className="space-y-3">
-                                                    <Label>Pricing Slabs</Label>
+                                                <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                                                    <Label className="text-sm font-medium">Pricing Slabs</Label>
                                                     <div className="space-y-2">
-                                                        {module.slabs?.map((slab, slabIndex) => (
+                                                        {module.slabs && module.slabs.length > 0 ? (
+                                                            module.slabs.map((slab, slabIndex) => (
                                                             <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
                                                                 <NumberInput
                                                                     value={slab.from_units}
@@ -545,7 +546,12 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
                                                             </div>
-                                                        ))}
+                                                            ))
+                                                        ) : (
+                                                            <div className="text-sm text-muted-foreground p-2 border rounded">
+                                                                No slabs configured. Click "Add Slab" to create pricing tiers.
+                                                            </div>
+                                                        )}
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
@@ -556,8 +562,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                     from_units: 0,
                                                                     to_units: 1000,
                                                                     rate_per_unit: 0,
-                                                                    fee_type: 'monthly',
-                                                                    parent_type: 'module',
+                                                                    fee_type: 'monthly' as const,
+                                                                    parent_type: 'module' as const,
                                                                     parent_id: module.id
                                                                 };
                                                                 const updatedSlabs = [...(updatedModules[index].slabs || []), newSlab];
@@ -605,7 +611,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
                     {/* Right Panel - Projection Table */}
                     <div className="lg:col-span-2">
-                        <Card className="h-full">
+                        <Card className="min-h-[600px]">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <div>
