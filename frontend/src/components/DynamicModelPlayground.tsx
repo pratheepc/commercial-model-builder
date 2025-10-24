@@ -37,6 +37,11 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
     const [tempValue, setTempValue] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
+    const [projectionConfig, setProjectionConfig] = useState({
+        periods: 12,
+        interval: 'monthly' as 'monthly' | 'yearly',
+        startDate: new Date().toISOString().split('T')[0]
+    });
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -121,15 +126,20 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         try {
             const results = generateProjection(
                 currentModel,
-                new Date().toISOString().split('T')[0],
-                12,
-                'monthly'
+                projectionConfig.startDate,
+                projectionConfig.periods,
+                projectionConfig.interval
             );
             
             const editableResults: EditableProjectionRow[] = results.map((result, index) => {
-                const startDate = new Date();
+                const startDate = new Date(projectionConfig.startDate);
                 const currentDate = new Date(startDate);
-                currentDate.setMonth(startDate.getMonth() + index);
+                
+                if (projectionConfig.interval === 'monthly') {
+                    currentDate.setMonth(startDate.getMonth() + index);
+                } else {
+                    currentDate.setFullYear(startDate.getFullYear() + index);
+                }
                 
                 // Calculate module fees for this period
                 const moduleFees: Array<{ module_name: string; fee: number }> = [];
@@ -311,6 +321,73 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
                     {/* Left Panel - Configuration */}
                     <div className="lg:col-span-1 space-y-6">
+                        {/* Projection Configuration */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Calculator className="h-5 w-5" />
+                                    Projection Settings
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="start-date">Start Date</Label>
+                                        <Input
+                                            id="start-date"
+                                            type="date"
+                                            value={projectionConfig.startDate}
+                                            onChange={(e) => {
+                                                const newConfig = { ...projectionConfig, startDate: e.target.value };
+                                                setProjectionConfig(newConfig);
+                                                generateInitialProjection();
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="periods">Number of Periods</Label>
+                                        <NumberInput
+                                            id="periods"
+                                            value={projectionConfig.periods}
+                                            onChange={(value) => {
+                                                const newConfig = { ...projectionConfig, periods: value };
+                                                setProjectionConfig(newConfig);
+                                                generateInitialProjection();
+                                            }}
+                                            min={1}
+                                            max={60}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label htmlFor="interval">Time Interval</Label>
+                                    <Select
+                                        value={projectionConfig.interval}
+                                        onValueChange={(value: 'monthly' | 'yearly') => {
+                                            const newConfig = { ...projectionConfig, interval: value };
+                                            setProjectionConfig(newConfig);
+                                            generateInitialProjection();
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="monthly">Monthly</SelectItem>
+                                            <SelectItem value="yearly">Yearly</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button
+                                    onClick={generateInitialProjection}
+                                    className="w-full flex items-center gap-2"
+                                >
+                                    <Calculator className="h-4 w-4" />
+                                    Generate Projection
+                                </Button>
+                            </CardContent>
+                        </Card>
+
                         {/* Model Configuration */}
                         <Card>
                             <CardHeader>
@@ -744,7 +821,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
                                         </div>
                                         <div>
-                                            <span className="text-muted-foreground">Avg Monthly:</span>
+                                            <span className="text-muted-foreground">Avg {projectionConfig.interval === 'monthly' ? 'Monthly' : 'Yearly'}:</span>
                                             <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
                                         </div>
                                     </div>
@@ -774,7 +851,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             <TableHeader className="sticky top-0 bg-white">
                                                 <TableRow>
                                                     <TableHead>Period</TableHead>
-                                                    <TableHead>Date</TableHead>
+                                                    <TableHead>{projectionConfig.interval === 'monthly' ? 'Month' : 'Year'}</TableHead>
                                                     <TableHead>Units</TableHead>
                                                     <TableHead>Total Fee</TableHead>
                                                     <TableHead>Module Fees</TableHead>
@@ -786,7 +863,12 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 {projectionResults.map((result, index) => (
                                                 <TableRow key={index}>
                                                     <TableCell className="font-medium">{result.period}</TableCell>
-                                                    <TableCell>{new Date(result.date).toLocaleDateString()}</TableCell>
+                                                    <TableCell>
+                                                        {projectionConfig.interval === 'monthly' 
+                                                            ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                            : new Date(result.date).getFullYear().toString()
+                                                        }
+                                                    </TableCell>
                                                     <TableCell>
                                                         {editingCell?.row === index && editingCell?.field === 'units' ? (
                                                             <Input
