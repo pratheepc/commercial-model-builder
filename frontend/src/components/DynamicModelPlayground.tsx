@@ -45,6 +45,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     });
     const [isProjectionSettingsOpen, setIsProjectionSettingsOpen] = useState(false);
     const [isUnitTypesOpen, setIsUnitTypesOpen] = useState(false);
+    const [moduleCatalogue, setModuleCatalogue] = useState<any[]>([]);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -110,6 +111,26 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             setIsSaving(false);
         }
     };
+
+    // Load module catalogue
+    useEffect(() => {
+        const loadModuleCatalogue = async () => {
+            try {
+                // This would fetch from the actual module catalogue API
+                // For now, using mock data
+                setModuleCatalogue([
+                    { id: '1', name: 'Basic Support', description: 'Basic customer support' },
+                    { id: '2', name: 'Premium Analytics', description: 'Advanced analytics and reporting' },
+                    { id: '3', name: 'API Access', description: 'API access and integration' },
+                    { id: '4', name: 'Custom Integration', description: 'Custom integration services' },
+                    { id: '5', name: 'Advanced Reporting', description: 'Advanced reporting features' }
+                ]);
+            } catch (error) {
+                console.error('Error loading module catalogue:', error);
+            }
+        };
+        loadModuleCatalogue();
+    }, []);
 
     // Generate initial projection
     useEffect(() => {
@@ -511,19 +532,47 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </Button>
                                             </div>
 
-                                            {/* Module Name - First Field */}
+                                            {/* Module Selection - First Field */}
                                             <div>
-                                                <Label>Module Name</Label>
-                                                <Input
+                                                <Label>Select Module</Label>
+                                                <Select
                                                     value={module.module_name}
-                                                    onChange={(e) => {
+                                                    onValueChange={(value) => {
                                                         const updatedModules = [...currentModel.modules];
-                                                        updatedModules[index] = { ...module, module_name: e.target.value };
+                                                        updatedModules[index] = { ...module, module_name: value };
                                                         setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
                                                         saveToDatabase({ ...currentModel, modules: updatedModules });
                                                     }}
-                                                    placeholder="e.g., Basic Support"
-                                                />
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Choose a module" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {moduleCatalogue.map((catalogueModule) => (
+                                                            <SelectItem key={catalogueModule.id} value={catalogueModule.name}>
+                                                                <div className="flex flex-col">
+                                                                    <span>{catalogueModule.name}</span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {catalogueModule.description}
+                                                                    </span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                        <div className="border-t border-border">
+                                                            <Button
+                                                                variant="ghost"
+                                                                className="w-full justify-start h-8 px-2"
+                                                                onClick={() => {
+                                                                    // This would open the module management page
+                                                                    console.log('Open module management');
+                                                                }}
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                                Manage Modules
+                                                            </Button>
+                                                        </div>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
 
                                             {/* Pricing Type - Second Field */}
