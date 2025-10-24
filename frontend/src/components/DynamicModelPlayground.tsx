@@ -324,13 +324,13 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
             </div>
 
             {/* Header */}
-            <div className="border-b px-4 py-3">
+            <div className="py-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div>
-                                <h1 className="text-2xl font-bold">
-                                    {currentModel.name}
-                                </h1>
+                            <h1 className="text-2xl font-bold">
+                                {currentModel.name}
+                            </h1>
                             <p className="text-muted-foreground">{currentModel.description}</p>
                         </div>
                     </div>
