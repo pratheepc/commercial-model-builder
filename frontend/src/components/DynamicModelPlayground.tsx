@@ -498,7 +498,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                     {currentModel.modules.map((module, index) => (
                                         <div key={module.id} className="p-3 border rounded-lg space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="font-medium">{module.module_name}</h4>
+                                                <h4 className="font-medium">Module Configuration</h4>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -511,7 +511,22 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </Button>
                                             </div>
 
-                                            {/* Pricing Type and Unit Type - First Fields */}
+                                            {/* Module Name - First Field */}
+                                            <div>
+                                                <Label>Module Name</Label>
+                                                <Input
+                                                    value={module.module_name}
+                                                    onChange={(e) => {
+                                                        const updatedModules = [...currentModel.modules];
+                                                        updatedModules[index] = { ...module, module_name: e.target.value };
+                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
+                                                    }}
+                                                    placeholder="e.g., Basic Support"
+                                                />
+                                            </div>
+
+                                            {/* Pricing Type and Unit Type - Second and Third Fields */}
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <Label>Pricing Type</Label>
