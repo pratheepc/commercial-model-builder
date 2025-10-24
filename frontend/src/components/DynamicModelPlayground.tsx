@@ -406,26 +406,171 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </div>
                                             </div>
                                             
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <Label>One-time Fee</Label>
+                                                    <NumberInput
+                                                        value={module.one_time_fee || 0}
+                                                        onChange={(value) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, one_time_fee: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label>Module Min Fee</Label>
+                                                    <NumberInput
+                                                        value={module.module_minimum_fee || 0}
+                                                        onChange={(value) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, module_minimum_fee: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            
                                             <div>
-                                                <Label>Pricing Type</Label>
-                                                <Select
-                                                    value={module.pricing_type}
-                                                    onValueChange={(value: PricingType) => {
+                                                <Label>Module Implementation Fee</Label>
+                                                <NumberInput
+                                                    value={module.module_implementation_fee || 0}
+                                                    onChange={(value) => {
                                                         const updatedModules = [...currentModel.modules];
-                                                        updatedModules[index] = { ...module, pricing_type: value };
+                                                        updatedModules[index] = { ...module, module_implementation_fee: value };
                                                         setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
                                                     }}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="flat">Flat</SelectItem>
-                                                        <SelectItem value="per_unit">Per Unit</SelectItem>
-                                                        <SelectItem value="slab">Slab</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                                />
                                             </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <Label>Pricing Type</Label>
+                                                    <Select
+                                                        value={module.pricing_type}
+                                                        onValueChange={(value: PricingType) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, pricing_type: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="flat">Flat</SelectItem>
+                                                            <SelectItem value="per_unit">Per Unit</SelectItem>
+                                                            <SelectItem value="slab">Slab</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label>Unit Type</Label>
+                                                    <Select
+                                                        value={module.unit_type_id}
+                                                        onValueChange={(value: string) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, unit_type_id: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select Unit Type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {currentModel.unit_types?.map((unitType) => (
+                                                                <SelectItem key={unitType.id} value={unitType.id}>
+                                                                    {unitType.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Slab Configuration */}
+                                            {module.pricing_type === 'slab' && (
+                                                <div className="space-y-3">
+                                                    <Label>Pricing Slabs</Label>
+                                                    <div className="space-y-2">
+                                                        {module.slabs?.map((slab, slabIndex) => (
+                                                            <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
+                                                                <NumberInput
+                                                                    value={slab.from_units}
+                                                                    onChange={(value) => {
+                                                                        const updatedModules = [...currentModel.modules];
+                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                        updatedSlabs[slabIndex] = { ...slab, from_units: value };
+                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                    }}
+                                                                    placeholder="From"
+                                                                    className="w-20"
+                                                                />
+                                                                <span className="text-muted-foreground">to</span>
+                                                                <NumberInput
+                                                                    value={slab.to_units || 0}
+                                                                    onChange={(value) => {
+                                                                        const updatedModules = [...currentModel.modules];
+                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                        updatedSlabs[slabIndex] = { ...slab, to_units: value };
+                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                    }}
+                                                                    placeholder="To"
+                                                                    className="w-20"
+                                                                />
+                                                                <NumberInput
+                                                                    value={slab.rate_per_unit}
+                                                                    onChange={(value) => {
+                                                                        const updatedModules = [...currentModel.modules];
+                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                        updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
+                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                    }}
+                                                                    placeholder="Rate"
+                                                                    className="w-24"
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const updatedModules = [...currentModel.modules];
+                                                                        const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
+                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const updatedModules = [...currentModel.modules];
+                                                                const newSlab = {
+                                                                    id: `slab-${Date.now()}`,
+                                                                    from_units: 0,
+                                                                    to_units: 1000,
+                                                                    rate_per_unit: 0,
+                                                                    fee_type: 'monthly',
+                                                                    parent_type: 'module',
+                                                                    parent_id: module.id
+                                                                };
+                                                                const updatedSlabs = [...(updatedModules[index].slabs || []), newSlab];
+                                                                updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            }}
+                                                        >
+                                                            <Plus className="h-4 w-4 mr-1" />
+                                                            Add Slab
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                     
