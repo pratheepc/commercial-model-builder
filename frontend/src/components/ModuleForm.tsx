@@ -162,12 +162,7 @@ export function ModuleForm({ isOpen, onClose, onSubmit, initialData, title, mode
                             <SelectContent>
                                 {moduleCatalogue.map((module) => (
                                     <SelectItem key={module.id} value={module.name}>
-                                        <div>
-                                            <div className="font-medium">{module.name}</div>
-                                            {module.description && (
-                                                <div className="text-sm text-muted-foreground">{module.description}</div>
-                                            )}
-                                        </div>
+                                        {module.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

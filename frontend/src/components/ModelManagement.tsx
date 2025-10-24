@@ -31,7 +31,9 @@ export function ModelManagement({ onViewModel }: ModelManagementProps) {
 
     const handleCreateModel = async (data: CreateModelData) => {
         try {
+            console.log('Creating model with data:', data);
             const newModel = await apiDataService.createModel(data);
+            console.log('Created model:', newModel);
             if (newModel) {
                 addModel(newModel);
                 // Automatically navigate to the new model

@@ -28,7 +28,7 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
     const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
     const [deleteModule, setDeleteModule] = useState<ModuleCatalogue | null>(null);
     const [newProduct, setNewProduct] = useState({ name: '', description: '' });
-    const [newModule, setNewModule] = useState({ name: '', description: '', product_id: '' });
+    const [newModule, setNewModule] = useState({ name: '', product_id: '' });
     const [refreshKey, setRefreshKey] = useState(0);
 
     // Pagination for products
@@ -82,7 +82,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
         console.log('➕ Creating module:', newModule.name);
         const createdModule = await apiDataService.addModuleToCatalogue({
             name: newModule.name.trim(),
-            description: newModule.description.trim() || undefined,
             product_id: newModule.product_id,
         });
 
@@ -90,7 +89,7 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
             console.log('✅ Module created, refreshing data...');
             await loadData();
         }
-        setNewModule({ name: '', description: '', product_id: '' });
+        setNewModule({ name: '', product_id: '' });
         setIsCreateModuleOpen(false);
     };
 
@@ -114,7 +113,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
 
         const updatedModule = await apiDataService.updateModuleInCatalogue(editingModule.id, {
             name: editingModule.name.trim(),
-            description: editingModule.description?.trim() || undefined,
             product_id: editingModule.product_id,
         });
 
@@ -256,7 +254,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                                                         <TableHeader>
                                                             <TableRow>
                                                                 <TableHead>Name</TableHead>
-                                                                <TableHead>Description</TableHead>
                                                                 <TableHead className="w-[100px]">Actions</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
@@ -264,9 +261,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                                                             {productModules.map((module) => (
                                                                 <TableRow key={module.id}>
                                                                     <TableCell className="font-medium">{module.name}</TableCell>
-                                                                    <TableCell className="text-muted-foreground">
-                                                                        {module.description || 'No description'}
-                                                                    </TableCell>
                                                                     <TableCell>
                                                                         <div className="flex items-center gap-2">
                                                                             <Button
@@ -333,7 +327,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Name</TableHead>
-                                        <TableHead>Description</TableHead>
                                         <TableHead className="w-[200px]">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -341,9 +334,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                                     {getModulesWithoutProduct().map((module) => (
                                         <TableRow key={module.id}>
                                             <TableCell className="font-medium">{module.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {module.description || 'No description'}
-                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Button
@@ -435,15 +425,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="module-description">Description</Label>
-                            <Input
-                                id="module-description"
-                                value={newModule.description}
-                                onChange={(e) => setNewModule(prev => ({ ...prev, description: e.target.value }))}
-                                placeholder="Brief description of the module (optional)"
-                            />
-                        </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="module-product">Product *</Label>
@@ -534,15 +515,6 @@ export function ProductModuleManagement({ onCatalogueUpdate }: ProductModuleMana
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-module-description">Description</Label>
-                            <Input
-                                id="edit-module-description"
-                                value={editingModule?.description || ''}
-                                onChange={(e) => setEditingModule(prev => prev ? { ...prev, description: e.target.value } : null)}
-                                placeholder="Brief description of the module (optional)"
-                            />
-                        </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="edit-module-product">Product *</Label>

@@ -23,6 +23,7 @@ export class ModelService {
 
   async createModel(modelData) {
     try {
+      console.log('Creating model with data:', modelData);
       const newModel = new Model({
         minimum_fee: 0,
         implementation_fee: 0,
@@ -30,6 +31,7 @@ export class ModelService {
         modules: [],
         ...modelData
       });
+      console.log('Model object before save:', newModel);
       
       const savedModel = await newModel.save();
       
@@ -44,6 +46,7 @@ export class ModelService {
       
       await defaultUnitType.save();
       
+      console.log('Saved model:', savedModel);
       return savedModel;
     } catch (error) {
       console.error('Error creating model:', error);

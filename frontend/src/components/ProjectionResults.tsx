@@ -78,9 +78,9 @@ export function ProjectionResults({ results, projectionName, modelName, model, o
                         <CardTitle className="text-sm font-medium">Final Units</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatNumber(totalUnits)}</div>
+                        <div className="text-2xl font-bold">{formatNumber(totalUnits, model?.currency)}</div>
                         <p className="text-xs text-muted-foreground">
-                            From {formatNumber(startingUnits)} units
+                            From {formatNumber(startingUnits, model?.currency)} units
                         </p>
                     </CardContent>
                 </Card>
@@ -154,7 +154,7 @@ export function ProjectionResults({ results, projectionName, modelName, model, o
                                                         <div className="font-medium">{unitType.name}</div>
                                                         <div className="text-sm text-muted-foreground">
                                                             {modulesForUnitType.length} module{modulesForUnitType.length !== 1 ? 's' : ''} •
-                                                            Starting: {formatNumber(unitType.starting_units)} units
+                                                            Starting: {formatNumber(unitType.starting_units, model?.currency)} units
                                                         </div>
                                                     </div>
                                                 </div>
@@ -206,7 +206,7 @@ export function ProjectionResults({ results, projectionName, modelName, model, o
                                                                         </TableCell>
                                                                         <TableCell>
                                                                             <div className="flex items-center gap-2">
-                                                                                {formatNumber(units)}
+                                                                                {formatNumber(units, model?.currency)}
                                                                                 {index > 0 && (
                                                                                     <Badge variant="outline" className="text-xs">
                                                                                         {units > (Math.round(unitType.starting_units * Math.pow(1 + unitType.growth_value / 100, index - 1))) ? '+' : ''}
@@ -282,7 +282,7 @@ export function ProjectionResults({ results, projectionName, modelName, model, o
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                {formatNumber(result.units)}
+                                                {formatNumber(result.units, model?.currency)}
                                                 {index > 0 && (
                                                     <Badge variant="outline" className="text-xs">
                                                         {result.units > results[index - 1].units ? '+' : ''}

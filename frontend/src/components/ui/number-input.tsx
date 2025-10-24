@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
     value: number;
@@ -9,6 +9,7 @@ interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
     step?: string;
     min?: number;
     max?: number;
+    currency?: string;
 }
 
 export function NumberInput({
@@ -19,18 +20,20 @@ export function NumberInput({
     step = "1",
     min,
     max,
+    currency,
     ...props
 }: NumberInputProps) {
-    const [displayValue, setDisplayValue] = useState(value.toString());
+    const [displayValue, setDisplayValue] = useState(value === 0 ? "" : formatNumber(value, currency));
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Update display value when prop value changes (but not when focused)
     useEffect(() => {
         if (!isFocused) {
-            setDisplayValue(value.toString());
+            // Show empty string for 0 values to keep UI clean, otherwise format with currency
+            setDisplayValue(value === 0 ? "" : formatNumber(value, currency));
         }
-    }, [value, isFocused]);
+    }, [value, isFocused, currency]);
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
         setIsFocused(true);
@@ -45,7 +48,7 @@ export function NumberInput({
         setIsFocused(false);
 
         // If the field is empty or invalid, set it to 0
-        const numValue = parseFloat(displayValue);
+        const numValue = parseFormattedNumber(displayValue);
         if (isNaN(numValue) || displayValue.trim() === "") {
             setDisplayValue("0");
             onChange(0);
@@ -59,25 +62,39 @@ export function NumberInput({
                 finalValue = max;
             }
 
-            setDisplayValue(finalValue.toString());
+            setDisplayValue(formatNumber(finalValue, currency));
             onChange(finalValue);
         }
 
         props.onBlur?.(e);
     };
 
+    // Helper function to parse formatted numbers (remove commas and parse)
+    const parseFormattedNumber = (value: string): number => {
+        // Remove commas and other formatting characters, then parse
+        const cleanValue = value.replace(/[,\s]/g, '');
+        return parseFloat(cleanValue);
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const inputValue = e.target.value;
-        setDisplayValue(inputValue);
 
         // Allow empty string while typing
         if (inputValue === "" || inputValue === "-") {
+            setDisplayValue(inputValue);
             return;
         }
 
-        const numValue = parseFloat(inputValue);
+        // Parse the number from the input (removing any formatting)
+        const numValue = parseFormattedNumber(inputValue);
+
         if (!isNaN(numValue)) {
+            // Update the display value with formatting if it's a valid number
+            setDisplayValue(formatNumber(numValue, currency));
             onChange(numValue);
+        } else {
+            // If it's not a valid number, just show the raw input
+            setDisplayValue(inputValue);
         }
     };
 

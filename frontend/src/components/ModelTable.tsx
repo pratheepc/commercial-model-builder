@@ -39,6 +39,7 @@ export function ModelTable({ models, onEdit, onDuplicate, onDelete, onView }: Mo
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
+                            <TableHead>Currency</TableHead>
                             <TableHead>Starting Units</TableHead>
                             <TableHead>Minimum Fee</TableHead>
                             <TableHead>Implementation Fee</TableHead>
@@ -51,7 +52,7 @@ export function ModelTable({ models, onEdit, onDuplicate, onDelete, onView }: Mo
                     <TableBody>
                         {models.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                     No models found. Create your first pricing model to get started.
                                 </TableCell>
                             </TableRow>
@@ -70,9 +71,14 @@ export function ModelTable({ models, onEdit, onDuplicate, onDelete, onView }: Mo
                                             )}
                                         </div>
                                     </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline">
+                                            {model.currency}
+                                        </Badge>
+                                    </TableCell>
                                     <TableCell>{model.unit_types?.length || 0}</TableCell>
-                                    <TableCell>{formatCurrency(model.minimum_fee)}</TableCell>
-                                    <TableCell>{formatCurrency(model.implementation_fee)}</TableCell>
+                                    <TableCell>{formatCurrency(model.minimum_fee, model.currency)}</TableCell>
+                                    <TableCell>{formatCurrency(model.implementation_fee, model.currency)}</TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">
                                             {model.modules.length} module{model.modules.length !== 1 ? 's' : ''}

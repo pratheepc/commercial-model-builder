@@ -10,13 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Trash2, TrendingUp, Package, Settings, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { Plus, Trash2, TrendingUp, Package, Settings, Settings2, ChevronDown, ChevronRight, Edit } from 'lucide-react';
+import { formatCurrency, formatNumber, getCurrencySymbol } from '@/lib/utils';
+import { SUPPORTED_CURRENCIES } from '@/types';
 
 interface DynamicModelPlaygroundProps {
     model: Model;
+    onBack?: () => void;
 }
 
 interface EditableProjectionRow {
@@ -32,7 +34,7 @@ interface EditableProjectionRow {
     isEditable?: boolean;
 }
 
-export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
+export function DynamicModelPlayground({ model, onBack }: DynamicModelPlaygroundProps) {
     const [currentModel, setCurrentModel] = useState<Model>(model);
     const [projectionResults, setProjectionResults] = useState<EditableProjectionRow[]>([]);
     const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
@@ -49,6 +51,12 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     const [isModelConfigOpen, setIsModelConfigOpen] = useState(true);
     const [isModulesOpen, setIsModulesOpen] = useState(true);
     const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+    const [editedUnits, setEditedUnits] = useState<{ [key: string]: number }>({});
+    const [editingUnit, setEditingUnit] = useState<{ unitTypeId: string; period: number } | null>(null);
+    const [editingUnitTypeName, setEditingUnitTypeName] = useState<{ unitTypeId: string } | null>(null);
+    const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
+    const [editingModule, setEditingModule] = useState<ModelModule | null>(null);
+    const [isEditingModule, setIsEditingModule] = useState(false);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -133,11 +141,11 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                 // This would fetch from the actual module catalogue API
                 // For now, using mock data
                 setModuleCatalogue([
-                    { id: '1', name: 'Basic Support', description: 'Basic customer support' },
-                    { id: '2', name: 'Premium Analytics', description: 'Advanced analytics and reporting' },
-                    { id: '3', name: 'API Access', description: 'API access and integration' },
-                    { id: '4', name: 'Custom Integration', description: 'Custom integration services' },
-                    { id: '5', name: 'Advanced Reporting', description: 'Advanced reporting features' }
+                    { id: '1', name: 'Basic Support', product_id: '' },
+                    { id: '2', name: 'Premium Analytics', product_id: '' },
+                    { id: '3', name: 'API Access', product_id: '' },
+                    { id: '4', name: 'Custom Integration', product_id: '' },
+                    { id: '5', name: 'Advanced Reporting', product_id: '' }
                 ]);
             } catch (error) {
                 console.error('Error loading module catalogue:', error);
@@ -245,9 +253,68 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     const handleUnitChange = (rowIndex: number, newUnits: number, unitTypeId?: string) => {
         if (rowIndex === 0) return; // Don't allow editing first period
 
-        // For now, we'll regenerate the entire projection since we have multiple unit types
-        // This ensures all calculations are consistent
-        generateInitialProjection();
+        // Store the edited unit value
+        if (unitTypeId) {
+            const key = `${unitTypeId}-${rowIndex}`;
+            setEditedUnits(prev => ({ ...prev, [key]: newUnits }));
+        }
+
+        // Recalculate projections from this point forward
+        recalculateProjectionsFromPeriod(rowIndex, newUnits, unitTypeId);
+    };
+
+    const recalculateProjectionsFromPeriod = (fromPeriod: number, newUnits: number | undefined, unitTypeId?: string) => {
+        if (!unitTypeId) return;
+
+        // Update the projection results from the edited period onwards
+        setProjectionResults(prev => {
+            return prev.map((result, index) => {
+                if (index < fromPeriod) return result; // Keep previous periods unchanged
+
+                // For the edited period, use the new units if provided
+                if (index === fromPeriod && newUnits !== undefined) {
+                    // Recalculate fees for this period with the new units
+                    const recalculatedFees = calculateTotalFeeForPeriod(currentModel, index, unitTypeId, newUnits);
+                    return {
+                        ...result,
+                        total_fee: recalculatedFees.total,
+                        breakdown: recalculatedFees.breakdown
+                    };
+                }
+
+                // For future periods, calculate units based on growth from the edited period
+                if (index > fromPeriod && newUnits !== undefined) {
+                    // Get the unit type to calculate growth
+                    const unitType = currentModel.unit_types?.find(ut => ut.id === unitTypeId);
+                    if (unitType) {
+                        // Calculate growth factor from the edited period to this period
+                        const periodsFromEdit = index - fromPeriod;
+                        const growthFactor = calculateGrowthFactor(unitType, periodsFromEdit);
+                        const calculatedUnits = Math.round(newUnits * growthFactor);
+
+                        // Update edited units for this period
+                        const key = `${unitTypeId}-${index}`;
+                        setEditedUnits(prev => ({ ...prev, [key]: calculatedUnits }));
+
+                        // Recalculate fees with the new units
+                        const recalculatedFees = calculateTotalFeeForPeriod(currentModel, index, unitTypeId, calculatedUnits);
+                        return {
+                            ...result,
+                            total_fee: recalculatedFees.total,
+                            breakdown: recalculatedFees.breakdown
+                        };
+                    }
+                }
+
+                // For other cases, use original calculation
+                const recalculatedFees = calculateTotalFeeForPeriod(currentModel, index, unitTypeId);
+                return {
+                    ...result,
+                    total_fee: recalculatedFees.total,
+                    breakdown: recalculatedFees.breakdown
+                };
+            });
+        });
     };
 
     const calculateGrowthFactor = (unitType: ModelUnitType, periods: number): number => {
@@ -265,7 +332,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
         return Math.round(unitType.starting_units * growthFactor);
     };
 
-    const calculateTotalFeeForPeriod = (units: number, model: Model, periodIndex: number) => {
+    const calculateTotalFeeForPeriod = (model: Model, periodIndex: number, editedUnitTypeId?: string, editedUnits?: number) => {
         let totalFee = 0;
         const moduleFees: Array<{ module_name: string; fee: number }> = [];
 
@@ -273,7 +340,14 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
         for (const module of model.modules) {
             // Get the unit type for this module and calculate units
             const moduleUnitType = model.unit_types?.find(ut => ut.id === module.unit_type_id);
-            const moduleUnits = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, periodIndex, projectionConfig.startDate, projectionConfig.interval) : 0;
+            let moduleUnits = 0;
+
+            // Use edited units if this is the edited unit type and period
+            if (editedUnitTypeId && module.unit_type_id === editedUnitTypeId && editedUnits !== undefined) {
+                moduleUnits = editedUnits;
+            } else if (moduleUnitType) {
+                moduleUnits = calculateUnitTypeUnits(moduleUnitType, periodIndex, projectionConfig.startDate, projectionConfig.interval);
+            }
 
             const moduleFee = calculateModuleFee(moduleUnits, module);
             totalFee += moduleFee;
@@ -304,6 +378,117 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     const handleCellEdit = (rowIndex: number, field: string, currentValue: number) => {
         setEditingCell({ row: rowIndex, field });
         setTempValue(currentValue.toString());
+    };
+
+    const handleUnitEdit = (unitTypeId: string, period: number, currentValue: number) => {
+        setEditingUnit({ unitTypeId, period });
+        setTempValue(currentValue.toString());
+    };
+
+    const handleUnitSave = () => {
+        if (!editingUnit) return;
+
+        const { unitTypeId, period } = editingUnit;
+        const newValue = parseFloat(tempValue);
+
+        if (!isNaN(newValue)) {
+            handleUnitChange(period, newValue, unitTypeId);
+        }
+
+        setEditingUnit(null);
+        setTempValue('');
+    };
+
+    const handleUnitCancel = () => {
+        setEditingUnit(null);
+        setTempValue('');
+    };
+
+    const handleRemoveEdit = (unitTypeId: string, period: number) => {
+        const key = `${unitTypeId}-${period}`;
+        setEditedUnits(prev => {
+            const newEditedUnits = { ...prev };
+            delete newEditedUnits[key];
+            return newEditedUnits;
+        });
+
+        // Recalculate projections from this period onwards with original values
+        recalculateProjectionsFromPeriod(period, undefined, unitTypeId);
+    };
+
+    const handleResetAllEdits = () => {
+        setEditedUnits({});
+        // Regenerate the entire projection with original values
+        generateInitialProjection();
+    };
+
+    const handleUnitTypeNameEdit = (unitTypeId: string, currentName: string) => {
+        setEditingUnitTypeName({ unitTypeId });
+        setTempValue(currentName);
+    };
+
+    const handleUnitTypeNameSave = async () => {
+        if (!editingUnitTypeName) return;
+
+        const { unitTypeId } = editingUnitTypeName;
+        const newName = tempValue.trim();
+
+        if (newName && newName !== '') {
+            // Update the unit type name in the model
+            const updatedModel = {
+                ...currentModel,
+                unit_types: currentModel.unit_types?.map(ut =>
+                    ut.id === unitTypeId ? { ...ut, name: newName } : ut
+                ) || []
+            };
+            setCurrentModel(updatedModel);
+
+            // Save to database
+            try {
+                await apiDataService.updateUnitType(unitTypeId, { name: newName });
+            } catch (error) {
+                console.error('Error updating unit type name:', error);
+            }
+        }
+
+        setEditingUnitTypeName(null);
+        setTempValue('');
+    };
+
+    const handleUnitTypeNameCancel = () => {
+        setEditingUnitTypeName(null);
+        setTempValue('');
+    };
+
+    const handleAddModule = () => {
+        // Create a new module object for the modal
+        const newModule: ModelModule = {
+            id: `module-${Date.now()}`,
+            model_id: currentModel.id,
+            module_name: '',
+            pricing_type: 'flat',
+            monthly_fee: 0,
+            one_time_fee: 0,
+            module_minimum_fee: 0,
+            unit_type_id: currentModel.unit_types?.[0]?.id || '',
+            slabs: [],
+            order: currentModel.modules.length
+        };
+        setEditingModule(newModule);
+        setIsEditingModule(false);
+        setIsModuleModalOpen(true);
+    };
+
+    const handleEditModule = (module: ModelModule) => {
+        setEditingModule(module);
+        setIsEditingModule(true);
+        setIsModuleModalOpen(true);
+    };
+
+    const handleModuleModalClose = () => {
+        setIsModuleModalOpen(false);
+        setEditingModule(null);
+        setIsEditingModule(false);
     };
 
     const handleCellSave = () => {
@@ -343,11 +528,20 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     }, [totalRevenue, projectionResults.length]);
 
     return (
-        <div className="h-screen bg-slate-50 flex flex-col">
+        <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
             {/* Breadcrumb */}
             <div className="py-2 text-sm text-muted-foreground border-b">
                 <div className="flex items-center gap-2">
-                    <span>Models</span>
+                    {onBack ? (
+                        <button
+                            onClick={onBack}
+                            className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                            Models
+                        </button>
+                    ) : (
+                        <span>Models</span>
+                    )}
                     <span>/</span>
                     <span className="text-foreground font-medium">{currentModel.name}</span>
                 </div>
@@ -426,6 +620,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                     <NumberInput
                                                         id={`starting-units-${index}`}
                                                         value={unitType.starting_units}
+                                                        currency={currentModel.currency}
                                                         onChange={(value) => {
                                                             const updatedUnitTypes = [...(currentModel.unit_types || [])];
                                                             updatedUnitTypes[index] = { ...unitType, starting_units: value };
@@ -459,6 +654,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                     <NumberInput
                                                         id={`growth-value-${index}`}
                                                         value={unitType.growth_value}
+                                                        currency={currentModel.currency}
                                                         onChange={(value) => {
                                                             const updatedUnitTypes = [...(currentModel.unit_types || [])];
                                                             updatedUnitTypes[index] = { ...unitType, growth_value: value };
@@ -510,786 +706,31 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                 </div>
             </div>
 
-                {/* Main Content */}
-                <div className="flex-1 overflow-auto">
-                    <div className={`min-h-full grid grid-cols-1 gap-6 transition-all duration-300 ${isLeftPanelOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
-                        {/* Left Panel - Projection Table */}
-                        <div className={`${isLeftPanelOpen ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
-                            <Card className="min-h-[600px]">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle>
-                                                Dynamic Revenue Projection
-                                            </CardTitle>
-                                            <CardDescription>
-                                                Edit any unit count to see real-time calculations
-                                            </CardDescription>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <Dialog open={isProjectionSettingsOpen} onOpenChange={setIsProjectionSettingsOpen}>
-                                                <DialogTrigger asChild>
-                                                    <Button variant="outline" className="flex items-center gap-2">
-                                                        <Settings2 className="h-4 w-4" />
-                                                        Projection Settings
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="sm:max-w-[425px]">
-                                                    <DialogHeader>
-                                                        <DialogTitle>Projection Settings</DialogTitle>
-                                                        <DialogDescription>
-                                                            Configure the time period and parameters for your revenue projections.
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className="space-y-4 py-4">
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div>
-                                                                <Label htmlFor="modal-start-date">Start Date</Label>
-                                                                <Input
-                                                                    id="modal-start-date"
-                                                                    type="date"
-                                                                    value={projectionConfig.startDate}
-                                                                    onChange={(e) => {
-                                                                        const newConfig = { ...projectionConfig, startDate: e.target.value };
-                                                                        setProjectionConfig(newConfig);
-                                                                        generateInitialProjection();
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label htmlFor="modal-periods">Number of Periods</Label>
-                                                                <NumberInput
-                                                                    id="modal-periods"
-                                                                    value={projectionConfig.periods}
-                                                                    onChange={(value) => {
-                                                                        const newConfig = { ...projectionConfig, periods: value };
-                                                                        setProjectionConfig(newConfig);
-                                                                        generateInitialProjection();
-                                                                    }}
-                                                                    min={1}
-                                                                    max={60}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <Label htmlFor="modal-interval">Time Interval</Label>
-                                                            <Select
-                                                                value={projectionConfig.interval}
-                                                                onValueChange={(value: 'monthly' | 'yearly') => {
-                                                                    const newConfig = { ...projectionConfig, interval: value };
-                                                                    setProjectionConfig(newConfig);
-                                                                    generateInitialProjection();
-                                                                }}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="monthly">Monthly</SelectItem>
-                                                                    <SelectItem value="yearly">Yearly</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    </div>
-                                                </DialogContent>
-                                            </Dialog>
-                                            <div className="flex items-center gap-4 text-sm">
-                                                <div>
-                                                    <span className="text-muted-foreground">Total Revenue:</span>
-                                                    <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Avg {projectionConfig.interval === 'monthly' ? 'Monthly' : 'Yearly'}:</span>
-                                                    <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    {projectionResults.length === 0 ? (
-                                        <div className="p-8 text-center">
-                                            <h3 className="text-lg font-semibold mb-2">No Projections Available</h3>
-                                            <p className="text-muted-foreground mb-4">
-                                                Add unit types and modules to see automatic revenue projections.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="overflow-auto max-h-[600px]">
-                                            <div className="min-w-full">
-                                                <Table>
-                                                    <TableHeader className="sticky top-0 bg-white">
-                                                        <TableRow>
-                                                            <TableHead className="sticky left-0 bg-white z-10 min-w-[180px]">Module</TableHead>
-                                                            {projectionResults.map((result, index) => (
-                                                                <TableHead key={index} className="text-left min-w-[100px]">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-medium text-sm">
-                                                                            {projectionConfig.interval === 'monthly'
-                                                                                ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                                                                                : new Date(result.date).getFullYear().toString()
-                                                                            }
-                                                                        </span>
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            P{result.period}
-                                                                        </span>
-                                                                    </div>
-                                                                </TableHead>
-                                                            ))}
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {/* Unit Types - Separate rows for each unit type */}
-                                                        {currentModel.unit_types?.map((unitType) => (
-                                                            <TableRow key={unitType.id}>
-                                                                <TableCell className="sticky left-0 bg-white z-10 font-medium text-left">
-                                                                    {unitType.name} Units
-                                                                </TableCell>
-                                                                {projectionResults.map((result, index) => {
-                                                                    // Calculate units for this specific unit type
-                                                                    const unitTypeUnits = calculateUnitTypeUnits(
-                                                                        unitType,
-                                                                        index,
-                                                                        projectionConfig.startDate,
-                                                                        projectionConfig.interval
-                                                                    );
-                                                                    
-                                                                    return (
-                                                                        <TableCell key={index} className="text-right">
-                                                                            {editingCell?.row === index && editingCell?.field === `units-${unitType.id}` ? (
-                                                                                <Input
-                                                                                    value={tempValue}
-                                                                                    onChange={(e) => setTempValue(e.target.value)}
-                                                                                    onKeyDown={handleKeyPress}
-                                                                                    onBlur={handleCellSave}
-                                                                                    autoFocus
-                                                                                    className="w-20 text-right text-sm"
-                                                                                />
-                                                                            ) : (
-                                                                                <div
-                                                                                    className={`cursor-pointer hover:bg-muted p-1 rounded text-sm ${result.isEditable ? 'hover:border' : ''}`}
-                                                                                    onClick={() => result.isEditable && handleCellEdit(index, `units-${unitType.id}`, unitTypeUnits)}
-                                                                                >
-                                                                                    {formatNumber(unitTypeUnits)}
-                                                                                </div>
-                                                                            )}
-                                                                        </TableCell>
-                                                                    );
-                                                                })}
-                                                            </TableRow>
-                                                        ))}
-
-                                                        {/* Model Minimum Fee Row */}
-                                                        <TableRow>
-                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
-                                                                Model Min Fee
-                                                            </TableCell>
-                                                            {projectionResults.map((result, index) => (
-                                                                <TableCell key={index} className="text-right">
-                                                                    <div className="text-sm">
-                                                                        {formatCurrency(result.breakdown.minimum_fee)}
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-
-                                                        {/* Model Implementation Fee Row */}
-                                                        <TableRow>
-                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
-                                                                Model Impl Fee
-                                                            </TableCell>
-                                                            {projectionResults.map((result, index) => (
-                                                                <TableCell key={index} className="text-right">
-                                                                    <div className="text-sm">
-                                                                        {formatCurrency(result.breakdown.implementation_fee)}
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-
-                                                        {/* Module Groups */}
-                                                        {currentModel.modules.map((module) => (
-                                                            <React.Fragment key={module.id}>
-                                                                {/* Module Header */}
-                                                                <TableRow className="bg-muted/30">
-                                                                    <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary text-sm text-left">
-                                                                        {module.module_name}
-                                                                    </TableCell>
-                                                                    {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-right font-bold text-primary text-sm">
-                                                                            —
-                                                                        </TableCell>
-                                                                    ))}
-                                                                </TableRow>
-
-                                                                {/* Module Monthly Fee */}
-                                                                {module.pricing_type === 'flat' && (
-                                                                    <TableRow>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                            Monthly Fee
-                                                                        </TableCell>
-                                                                        {projectionResults.map((_, index) => (
-                                                                            <TableCell key={index} className="text-right">
-                                                                                <div className="text-sm">
-                                                                                    {formatCurrency(module.monthly_fee || 0)}
-                                                                                </div>
-                                                                            </TableCell>
-                                                                        ))}
-                                                                    </TableRow>
-                                                                )}
-
-                                                                {/* Module Per-Unit Fee */}
-                                                                {module.pricing_type === 'per_unit' && (
-                                                                    <TableRow>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                            Rate per Unit
-                                                                        </TableCell>
-                                                                        {projectionResults.map((result, index) => {
-                                                                            // Get the unit type for this module
-                                                                            const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
-                                                                            const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
-                                                                            
-                                                                            return (
-                                                                                <TableCell key={index} className="text-right">
-                                                                                    <div className="text-sm">
-                                                                                        {formatCurrency(module.monthly_fee || 0)} × {formatNumber(units)}
-                                                                                    </div>
-                                                                                </TableCell>
-                                                                            );
-                                                                        })}
-                                                                    </TableRow>
-                                                                )}
-
-                                                                {/* Module Slab Fees */}
-                                                                {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
-                                                                    module.slabs.map((slab, slabIndex) => (
-                                                                        <TableRow key={slabIndex}>
-                                                                            <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                                Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
-                                                                            </TableCell>
-                                                                            {projectionResults.map((result, index) => {
-                                                                                // Get the unit type for this module
-                                                                                const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
-                                                                                const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
-                                                                                
-                                                                                // Calculate fee for this specific slab
-                                                                                const slabStart = slab.from_units;
-                                                                                const slabEnd = slab.to_units || units;
-                                                                                const slabRate = slab.rate_per_unit;
-                                                                                
-                                                                                let slabFee = 0;
-                                                                                if (units > slabStart) {
-                                                                                    const unitsInSlab = Math.min(units, slabEnd) - Math.max(slabStart, 0);
-                                                                                    slabFee = unitsInSlab * slabRate;
-                                                                                }
-                                                                                
-                                                                                return (
-                                                                                    <TableCell key={index} className="text-right">
-                                                                                        <div className="text-sm">
-                                                                                            {formatCurrency(slabFee)}
-                                                                                        </div>
-                                                                                    </TableCell>
-                                                                                );
-                                                                            })}
-                                                                        </TableRow>
-                                                                    ))
-                                                                )}
-
-                                                                {/* Module Minimum Fee */}
-                                                                {module.module_minimum_fee && module.module_minimum_fee > 0 && (
-                                                                    <TableRow>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                            Module Min Fee
-                                                                        </TableCell>
-                                                                        {projectionResults.map((_, index) => (
-                                                                            <TableCell key={index} className="text-right">
-                                                                                <div className="text-sm">
-                                                                                    {formatCurrency(module.module_minimum_fee || 0)}
-                                                                                </div>
-                                                                            </TableCell>
-                                                                        ))}
-                                                                    </TableRow>
-                                                                )}
-
-                                                                {/* Module One-time Fee */}
-                                                                {module.one_time_fee && module.one_time_fee > 0 && (
-                                                                    <TableRow>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                            Setup Fee
-                                                                        </TableCell>
-                                                                        {projectionResults.map((_, index) => (
-                                                                            <TableCell key={index} className="text-right">
-                                                                                <div className="text-sm">
-                                                                                    {index === 0 ? formatCurrency(module.one_time_fee || 0) : formatCurrency(0)}
-                                                                                </div>
-                                                                            </TableCell>
-                                                                        ))}
-                                                                    </TableRow>
-                                                                )}
-
-                                                                {/* Module Total */}
-                                                                <TableRow className="border-b border-muted">
-                                                                    <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm text-left">
-                                                                        {module.module_name} Total
-                                                                    </TableCell>
-                                                                    {projectionResults.map((result, index) => {
-                                                                        const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
-                                                                        return (
-                                                                            <TableCell key={index} className="text-right font-semibold">
-                                                                                <div className="text-sm">
-                                                                                    {formatCurrency(moduleFee?.fee || 0)}
-                                                                                </div>
-                                                                            </TableCell>
-                                                                        );
-                                                                    })}
-                                                                </TableRow>
-                                                            </React.Fragment>
-                                                        ))}
-
-                                                        {/* Grand Total Row */}
-                                                        <TableRow className="border-t-2 border-primary bg-primary/5">
-                                                            <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-sm text-left">
-                                                                Grand Total
-                                                            </TableCell>
-                                                            {projectionResults.map((result, index) => (
-                                                                <TableCell key={index} className="text-right font-bold">
-                                                                    <div className="text-sm">
-                                                                        {formatCurrency(result.total_fee)}
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Right Panel - Configuration */}
-                        {isLeftPanelOpen && (
-                            <div className="lg:col-span-1 space-y-6">
-
-                            {/* Model Configuration */}
-                            <Collapsible open={isModelConfigOpen} onOpenChange={setIsModelConfigOpen}>
-                                <Card>
-                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <CollapsibleTrigger asChild>
-                                            <div className="flex items-center gap-2 w-full">
-                                                <Settings className="h-5 w-5" />
-                                                <span className="font-semibold">Model Configuration</span>
-                                                {isModelConfigOpen ? (
-                                                    <ChevronDown className="h-4 w-4 ml-auto" />
-                                                ) : (
-                                                    <ChevronRight className="h-4 w-4 ml-auto" />
-                                                )}
-                                            </div>
-                                        </CollapsibleTrigger>
-                                    </CardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <Label htmlFor="minimum-fee">Minimum Fee</Label>
-                                                    <NumberInput
-                                                        id="minimum-fee"
-                                                        value={currentModel.minimum_fee}
-                                                        onChange={(value) => {
-                                                            const updatedModel = { ...currentModel, minimum_fee: value };
-                                                            setCurrentModel(updatedModel);
-                                                            saveToDatabase(updatedModel);
-                                                        }}
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <Label htmlFor="implementation-fee">Implementation Fee</Label>
-                                                    <NumberInput
-                                                        id="implementation-fee"
-                                                        value={currentModel.implementation_fee}
-                                                        onChange={(value) => setCurrentModel(prev => ({ ...prev, implementation_fee: value }))}
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-
-
-                            {/* Modules */}
-                            <Collapsible open={isModulesOpen} onOpenChange={setIsModulesOpen}>
-                                <Card>
-                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <CollapsibleTrigger asChild>
-                                            <div className="flex items-center gap-2 w-full">
-                                                <Package className="h-5 w-5" />
-                                                <span className="font-semibold">Modules</span>
-                                                {isModulesOpen ? (
-                                                    <ChevronDown className="h-4 w-4 ml-auto" />
-                                                ) : (
-                                                    <ChevronRight className="h-4 w-4 ml-auto" />
-                                                )}
-                                            </div>
-                                        </CollapsibleTrigger>
-                                    </CardHeader>
-                                    <CollapsibleContent>
-                                        <CardContent>
-                                            <div className="space-y-3">
-                                                {currentModel.modules.map((module, index) => (
-                                                    <div key={module.id} className="p-3 border rounded-lg space-y-3">
-                                                        <div className="flex items-center justify-between">
-                                                            <h4 className="font-medium">Module Configuration</h4>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    const updatedModules = currentModel.modules.filter((_, i) => i !== index);
-                                                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-
-                                                        {/* Module Selection - First Field */}
-                                                        <div>
-                                                            <Label>Select Module</Label>
-                                                            <Select
-                                                                value={module.module_name}
-                                                                onValueChange={(value) => {
-                                                                    const updatedModules = [...currentModel.modules];
-                                                                    updatedModules[index] = { ...module, module_name: value };
-                                                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                }}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue placeholder="Choose a module" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {moduleCatalogue.map((catalogueModule) => (
-                                                                        <SelectItem key={catalogueModule.id} value={catalogueModule.name}>
-                                                                            <div className="flex flex-col">
-                                                                                <span>{catalogueModule.name}</span>
-                                                                                <span className="text-xs text-muted-foreground">
-                                                                                    {catalogueModule.description}
-                                                                                </span>
-                                                                            </div>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                    <div className="border-t border-border">
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            className="w-full justify-start h-8 px-2"
-                                                                            onClick={() => {
-                                                                                // This would open the module management page
-                                                                                console.log('Open module management');
-                                                                            }}
-                                                                        >
-                                                                            <Plus className="h-4 w-4 mr-2" />
-                                                                            Manage Modules
-                                                                        </Button>
-                                                                    </div>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        {/* Pricing Type - Second Field */}
-                                                        <div>
-                                                            <Label>Pricing Type</Label>
-                                                            <Select
-                                                                value={module.pricing_type}
-                                                                onValueChange={(value: PricingType) => {
-                                                                    const updatedModules = [...currentModel.modules];
-                                                                    updatedModules[index] = { ...module, pricing_type: value };
-                                                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                }}
-                                                            >
-                                                                <SelectTrigger>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="flat">Flat Rate</SelectItem>
-                                                                    <SelectItem value="per_unit">Per Unit</SelectItem>
-                                                                    <SelectItem value="slab">Slab Pricing</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        {/* Unit Type - Only for usage-based modules */}
-                                                        {(module.pricing_type === 'per_unit' || module.pricing_type === 'slab') && (
-                                                            <div>
-                                                                <Label>Unit Type</Label>
-                                                                <Select
-                                                                    value={module.unit_type_id}
-                                                                    onValueChange={(value: string) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        updatedModules[index] = { ...module, unit_type_id: value };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                    }}
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select Unit Type" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {currentModel.unit_types?.map((unitType) => (
-                                                                            <SelectItem key={unitType.id} value={unitType.id}>
-                                                                                {unitType.name}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                        <div className="border-t border-border">
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                className="w-full justify-start h-8 px-2"
-                                                                                onClick={() => setIsUnitTypesOpen(true)}
-                                                                            >
-                                                                                <Plus className="h-4 w-4 mr-2" />
-                                                                                Add Unit Type
-                                                                            </Button>
-                                                                        </div>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Fee Configuration based on pricing type */}
-                                                        {module.pricing_type === 'flat' && (
-                                                            <div>
-                                                                <Label>Monthly Fee</Label>
-                                                                <NumberInput
-                                                                    value={module.monthly_fee || 0}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        updatedModules[index] = { ...module, monthly_fee: value };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                    }}
-                                                                    placeholder="e.g., 100"
-                                                                />
-                                                                <p className="text-xs text-muted-foreground mt-1">
-                                                                    Fixed monthly fee for this module
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {module.pricing_type === 'per_unit' && (
-                                                            <div>
-                                                                <Label>Rate per Unit</Label>
-                                                                <NumberInput
-                                                                    value={module.monthly_fee || 0}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        updatedModules[index] = { ...module, monthly_fee: value };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                    }}
-                                                                    placeholder="e.g., 2.50"
-                                                                />
-                                                                <p className="text-xs text-muted-foreground mt-1">
-                                                                    Rate charged per unit consumed
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Optional minimum fee for usage-based modules */}
-                                                        {(module.pricing_type === 'per_unit' || module.pricing_type === 'slab') && (
-                                                            <div>
-                                                                <Label>Minimum Monthly Fee (Optional)</Label>
-                                                                <NumberInput
-                                                                    value={module.module_minimum_fee || 0}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        updatedModules[index] = { ...module, module_minimum_fee: value };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                    }}
-                                                                    placeholder="e.g., 25"
-                                                                />
-                                                                <p className="text-xs text-muted-foreground mt-1">
-                                                                    Ensures minimum revenue even with low usage
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {/* One-time setup fee */}
-                                                        <div>
-                                                            <Label>One-time Setup Fee (Optional)</Label>
-                                                            <NumberInput
-                                                                value={module.one_time_fee || 0}
-                                                                onChange={(value) => {
-                                                                    const updatedModules = [...currentModel.modules];
-                                                                    updatedModules[index] = { ...module, one_time_fee: value };
-                                                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                                }}
-                                                                placeholder="e.g., 500"
-                                                            />
-                                                            <p className="text-xs text-muted-foreground mt-1">
-                                                                Charged once during implementation
-                                                            </p>
-                                                        </div>
-
-
-                                                        {/* Slab Configuration */}
-                                                        {module.pricing_type === 'slab' && (
-                                                            <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
-                                                                <Label className="text-sm font-medium">Pricing Slabs</Label>
-                                                                <div className="space-y-2">
-                                                                    {module.slabs && module.slabs.length > 0 ? (
-                                                                        module.slabs.map((slab, slabIndex) => {
-                                                                            const isLastSlab = slabIndex === module.slabs.length - 1;
-                                                                            return (
-                                                                                <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
-                                                                                    <NumberInput
-                                                                                        value={slab.from_units}
-                                                                                        onChange={(value) => {
-                                                                                            const updatedModules = [...currentModel.modules];
-                                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                                            updatedSlabs[slabIndex] = { ...slab, from_units: value };
-                                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                                        }}
-                                                                                        placeholder="From"
-                                                                                        className="w-20"
-                                                                                    />
-                                                                                    <span className="text-muted-foreground whitespace-nowrap">
-                                                                                        {isLastSlab ? "and above" : "to"}
-                                                                                    </span>
-                                                                                    {!isLastSlab && (
-                                                                                        <NumberInput
-                                                                                            value={slab.to_units || 0}
-                                                                                            onChange={(value) => {
-                                                                                                const updatedModules = [...currentModel.modules];
-                                                                                                const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                                                updatedSlabs[slabIndex] = { ...slab, to_units: value };
-                                                                                                updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                                            }}
-                                                                                            placeholder="To"
-                                                                                            className="w-20"
-                                                                                        />
-                                                                                    )}
-                                                                                    {isLastSlab && (
-                                                                                        <div className="w-20 text-sm text-muted-foreground flex items-center justify-center flex-shrink-0">
-                                                                                            ∞
-                                                                                        </div>
-                                                                                    )}
-                                                                                    <NumberInput
-                                                                                        value={slab.rate_per_unit}
-                                                                                        onChange={(value) => {
-                                                                                            const updatedModules = [...currentModel.modules];
-                                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                                            updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
-                                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                                        }}
-                                                                                        placeholder="Rate"
-                                                                                        className="w-24"
-                                                                                    />
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="sm"
-                                                                                        onClick={() => {
-                                                                                            const updatedModules = [...currentModel.modules];
-                                                                                            const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
-                                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                                        }}
-                                                                                    >
-                                                                                        <Trash2 className="h-4 w-4" />
-                                                                                    </Button>
-                                                                                </div>
-                                                                            );
-                                                                        })
-                                                                    ) : (
-                                                                        <div className="text-sm text-muted-foreground p-2 border rounded">
-                                                                            No slabs configured. Click "Add Slab" to create pricing tiers.
-                                                                        </div>
-                                                                    )}
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            const updatedModules = [...currentModel.modules];
-                                                                            const existingSlabs = updatedModules[index].slabs || [];
-                                                                            const lastSlab = existingSlabs[existingSlabs.length - 1];
-
-                                                                            // If there are existing slabs, start the new one from where the last one ended
-                                                                            const fromUnits = lastSlab ? (lastSlab.to_units || 0) + 1 : 0;
-
-                                                                            const newSlab = {
-                                                                                id: `slab-${Date.now()}`,
-                                                                                from_units: fromUnits,
-                                                                                to_units: existingSlabs.length === 0 ? 100 : undefined, // Only set to_units for non-last slabs
-                                                                                rate_per_unit: 0,
-                                                                                fee_type: 'monthly' as const,
-                                                                                parent_type: 'module' as const,
-                                                                                parent_id: module.id
-                                                                            };
-                                                                            const updatedSlabs = [...existingSlabs, newSlab];
-                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                        }}
-                                                                    >
-                                                                        <Plus className="h-4 w-4 mr-1" />
-                                                                        Add Slab
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-full"
-                                                    onClick={() => {
-                                                        const newModule: ModelModule = {
-                                                            id: `module-${Date.now()}`,
-                                                            model_id: currentModel.id,
-                                                            module_name: 'New Module',
-                                                            pricing_type: 'flat',
-                                                            monthly_fee: 0,
-                                                            one_time_fee: 0,
-                                                            module_minimum_fee: 0,
-                                                            unit_type_id: currentModel.unit_types?.[0]?.id || 'default',
-                                                            slabs: [],
-                                                            order: currentModel.modules.length
-                                                        };
-                                                        setCurrentModel(prev => ({ ...prev, modules: [...prev.modules, newModule] }));
-                                                    }}
-                                                >
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Add Module
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </CollapsibleContent>
-                                </Card>
-                            </Collapsible>
-                        </div>
-                    )}
-
-                    {/* Right Panel - Projection Table */}
+            {/* Main Content */}
+            <div className="flex-1 overflow-hidden max-h-[calc(100vh-120px)]">
+                <div className={`h-full grid grid-cols-1 gap-6 transition-all duration-300 ${isLeftPanelOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
+                    {/* Left Panel - Projection Table */}
                     <div className={`${isLeftPanelOpen ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
-                        <Card className="min-h-[600px]">
+                        <Card className="max-h-[calc(100vh-200px)] flex flex-col">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <CardTitle>
-                                            Dynamic Revenue Projection
+                                            Projections
                                         </CardTitle>
-                                        <CardDescription>
-                                            Edit any unit count to see real-time calculations
-                                        </CardDescription>
                                     </div>
                                     <div className="flex items-center gap-4">
+                                        {Object.keys(editedUnits).length > 0 && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleResetAllEdits}
+                                                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            >
+                                                <span className="text-xs">↶</span>
+                                                Reset All Edits
+                                            </Button>
+                                        )}
                                         <Dialog open={isProjectionSettingsOpen} onOpenChange={setIsProjectionSettingsOpen}>
                                             <DialogTrigger asChild>
                                                 <Button variant="outline" className="flex items-center gap-2">
@@ -1324,6 +765,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             <NumberInput
                                                                 id="modal-periods"
                                                                 value={projectionConfig.periods}
+                                                                currency={currentModel.currency}
                                                                 onChange={(value) => {
                                                                     const newConfig = { ...projectionConfig, periods: value };
                                                                     setProjectionConfig(newConfig);
@@ -1359,17 +801,17 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                         <div className="flex items-center gap-4 text-sm">
                                             <div>
                                                 <span className="text-muted-foreground">Total Revenue:</span>
-                                                <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(totalRevenue, currentModel.currency)}</span>
                                             </div>
                                             <div>
                                                 <span className="text-muted-foreground">Avg {projectionConfig.interval === 'monthly' ? 'Monthly' : 'Yearly'}:</span>
-                                                <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
+                                                <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue, currentModel.currency)}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-0">
+                            <CardContent className="p-0 flex-1 flex flex-col max-h-[calc(100vh-300px)]">
                                 {projectionResults.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <h3 className="text-lg font-semibold mb-2">No Projections Available</h3>
@@ -1377,40 +819,78 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                             Add unit types and modules to see automatic revenue projections.
                                         </p>
                                     </div>
+                                ) : !currentModel.modules.some(module => {
+                                    return (module.pricing_type === 'flat' && module.monthly_fee && module.monthly_fee > 0) ||
+                                        (module.pricing_type === 'per_unit' && module.monthly_fee && module.monthly_fee > 0) ||
+                                        (module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0) ||
+                                        (module.module_minimum_fee && module.module_minimum_fee > 0) ||
+                                        (module.one_time_fee && module.one_time_fee > 0);
+                                }) && !(currentModel.minimum_fee > 0 || currentModel.implementation_fee > 0) ? (
+                                    <div className="p-8 text-center">
+                                        <h3 className="text-lg font-semibold mb-2">No Fees Configured</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Configure platform fees or module fees to see revenue projections.
+                                        </p>
+                                    </div>
                                 ) : (
-                                    <div className="overflow-auto max-h-[600px]">
+                                    <div className="flex-1 overflow-auto max-h-[calc(100vh-350px)]">
                                         <div className="min-w-full">
-                                            <Table>
-                                                <TableHeader className="sticky top-0 bg-white">
+                                            <Table className="h-full">
+                                                <TableHeader className="sticky top-0 bg-white z-30">
                                                     <TableRow>
-                                                        <TableHead className="sticky left-0 bg-white z-10 min-w-[180px]">Module</TableHead>
+                                                        <TableHead className="sticky left-0 bg-white z-30 min-w-[180px]">Module</TableHead>
                                                         {projectionResults.map((result, index) => (
-                                                                <TableHead key={index} className="text-left min-w-[100px]">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-medium text-sm">
-                                                                            {projectionConfig.interval === 'monthly'
-                                                                                ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                                                                                : new Date(result.date).getFullYear().toString()
-                                                                            }
-                                                                        </span>
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            P{result.period}
-                                                                        </span>
-                                                                    </div>
-                                                                </TableHead>
+                                                            <TableHead key={index} className="text-left min-w-[100px]">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium text-sm">
+                                                                        {projectionConfig.interval === 'monthly'
+                                                                            ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                                            : new Date(result.date).getFullYear().toString()
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        P{result.period}
+                                                                    </span>
+                                                                </div>
+                                                            </TableHead>
                                                         ))}
                                                     </TableRow>
                                                 </TableHeader>
-                                                <TableBody>
+                                                <TableBody className="h-full">
                                                     {/* Unit Types - Separate rows for each unit type */}
                                                     {currentModel.unit_types?.map((unitType) => (
                                                         <TableRow key={unitType.id}>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-left">
-                                                            {unitType.name} Units
-                                                        </TableCell>
+                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium text-left">
+                                                                {editingUnitTypeName?.unitTypeId === unitType.id ? (
+                                                                    <Input
+                                                                        value={tempValue}
+                                                                        onChange={(e) => setTempValue(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                handleUnitTypeNameSave();
+                                                                            } else if (e.key === 'Escape') {
+                                                                                handleUnitTypeNameCancel();
+                                                                            }
+                                                                        }}
+                                                                        onBlur={handleUnitTypeNameSave}
+                                                                        autoFocus
+                                                                        className="w-full text-sm font-medium"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className="cursor-pointer hover:bg-muted p-1 rounded text-sm"
+                                                                        onClick={() => handleUnitTypeNameEdit(unitType.id, unitType.name)}
+                                                                        title="Click to edit unit type name"
+                                                                    >
+                                                                        {unitType.name}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
                                                             {projectionResults.map((result, index) => {
-                                                                // Calculate units for this specific unit type
-                                                                const unitTypeUnits = calculateUnitTypeUnits(
+                                                                // Check if this unit value has been edited
+                                                                const editedKey = `${unitType.id}-${index}`;
+                                                                const isEdited = editedUnits[editedKey] !== undefined;
+                                                                const displayUnits = isEdited ? editedUnits[editedKey] : calculateUnitTypeUnits(
                                                                     unitType,
                                                                     index,
                                                                     projectionConfig.startDate,
@@ -1419,21 +899,45 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                                 return (
                                                                     <TableCell key={index} className="text-right">
-                                                                        {editingCell?.row === index && editingCell?.field === `units-${unitType.id}` ? (
+                                                                        {editingUnit?.unitTypeId === unitType.id && editingUnit?.period === index ? (
                                                                             <Input
                                                                                 value={tempValue}
                                                                                 onChange={(e) => setTempValue(e.target.value)}
-                                                                                onKeyDown={handleKeyPress}
-                                                                                onBlur={handleCellSave}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === 'Enter') {
+                                                                                        handleUnitSave();
+                                                                                    } else if (e.key === 'Escape') {
+                                                                                        handleUnitCancel();
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={handleUnitSave}
                                                                                 autoFocus
-                                                                                className="w-20 text-right"
+                                                                                className="w-20 text-right text-sm"
                                                                             />
                                                                         ) : (
-                                                                            <div
-                                                                                className={`cursor-pointer hover:bg-muted p-1 rounded text-sm ${result.isEditable ? 'hover:border' : ''}`}
-                                                                                onClick={() => result.isEditable && handleCellEdit(index, `units-${unitType.id}`, unitTypeUnits)}
-                                                                            >
-                                                                                {formatNumber(unitTypeUnits)}
+                                                                            <div className="flex justify-end">
+                                                                                <div
+                                                                                    className={`cursor-pointer hover:bg-muted p-1 rounded text-sm ${index > 0 ? 'hover:border' : ''} ${isEdited ? 'bg-blue-50 border border-blue-200 font-semibold text-blue-700' : ''
+                                                                                        }`}
+                                                                                    onClick={() => index > 0 && handleUnitEdit(unitType.id, index, displayUnits)}
+                                                                                    title={isEdited ? 'Edited value' : 'Click to edit'}
+                                                                                >
+                                                                                    <div className="flex items-center">
+                                                                                        {isEdited && index > 0 && (
+                                                                                            <button
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    handleRemoveEdit(unitType.id, index);
+                                                                                                }}
+                                                                                                className="text-red-500 hover:text-red-700 text-xs mr-2 p-1 rounded hover:bg-red-50"
+                                                                                                title="Remove edit"
+                                                                                            >
+                                                                                                ✕
+                                                                                            </button>
+                                                                                        )}
+                                                                                        <span>{formatNumber(displayUnits, currentModel.currency)}</span>
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
                                                                         )}
                                                                     </TableCell>
@@ -1442,186 +946,211 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                         </TableRow>
                                                     ))}
 
-                                                    {/* Model Minimum Fee Row */}
+                                                    {/* Platform Fee Row */}
                                                     <TableRow>
                                                         <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
-                                                            Model Min Fee
+                                                            Platform Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-right">
                                                                 <div className="text-sm">
-                                                                    {formatCurrency(result.breakdown.minimum_fee)}
+                                                                    {formatCurrency(result.breakdown.minimum_fee, currentModel.currency)}
                                                                 </div>
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
 
-                                                    {/* Model Implementation Fee Row */}
+                                                    {/* Implementation Fee Row */}
                                                     <TableRow>
                                                         <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
-                                                            Model Impl Fee
+                                                            Implementation Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-right">
                                                                 <div className="text-sm">
-                                                                    {formatCurrency(result.breakdown.implementation_fee)}
+                                                                    {formatCurrency(result.breakdown.implementation_fee, currentModel.currency)}
                                                                 </div>
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
 
                                                     {/* Module Groups */}
-                                                    {currentModel.modules.map((module) => (
-                                                        <React.Fragment key={module.id}>
-                                                            {/* Module Header */}
-                                                            <TableRow className="bg-muted/30">
-                                                                <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary text-left">
-                                                                    {module.module_name}
-                                                                </TableCell>
-                                                                {projectionResults.map((_, index) => (
-                                                                    <TableCell key={index} className="text-right font-bold text-primary">
-                                                                        —
-                                                                    </TableCell>
-                                                                ))}
-                                                            </TableRow>
+                                                    {currentModel.modules.map((module) => {
+                                                        // Only show module if it has fees configured
+                                                        const hasFees = (module.pricing_type === 'flat' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                            (module.pricing_type === 'per_unit' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                            (module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0) ||
+                                                            (module.module_minimum_fee && module.module_minimum_fee > 0) ||
+                                                            (module.one_time_fee && module.one_time_fee > 0);
 
-                                                            {/* Module Monthly Fee */}
-                                                            {module.pricing_type === 'flat' && (
-                                                                <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                        Monthly Fee
+                                                        if (!hasFees) return null;
+
+                                                        return (
+                                                            <React.Fragment key={module.id}>
+                                                                {/* Module Header */}
+                                                                <TableRow className="bg-muted/30">
+                                                                    <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary text-sm text-left">
+                                                                        {module.module_name}
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-right">
-                                                                            <div className="text-sm">
-                                                                                {formatCurrency(module.monthly_fee || 0)}
-                                                                            </div>
+                                                                        <TableCell key={index} className="text-right font-bold text-primary text-sm">
+                                                                            —
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
-                                                            )}
 
-                                                            {/* Module Per-Unit Fee */}
-                                                            {module.pricing_type === 'per_unit' && (
-                                                                <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                        Rate per Unit
-                                                                    </TableCell>
-                                                                    {projectionResults.map((result, index) => {
-                                                                        // Get the unit type for this module
-                                                                        const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
-                                                                        const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
-                                                                        
-                                                                        return (
+                                                                {/* Module Monthly Fee */}
+                                                                {module.pricing_type === 'flat' && (module.monthly_fee || 0) > 0 && (
+                                                                    <TableRow>
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
+                                                                            Monthly Fee
+                                                                        </TableCell>
+                                                                        {projectionResults.map((_, index) => (
                                                                             <TableCell key={index} className="text-right">
                                                                                 <div className="text-sm">
-                                                                                    {formatCurrency(module.monthly_fee || 0)} × {formatNumber(units)}
+                                                                                    {formatCurrency(module.monthly_fee || 0, currentModel.currency)}
                                                                                 </div>
                                                                             </TableCell>
-                                                                        );
-                                                                    })}
-                                                                </TableRow>
-                                                            )}
+                                                                        ))}
+                                                                    </TableRow>
+                                                                )}
 
-                                                            {/* Module Slab Fees */}
-                                                            {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
-                                                                module.slabs.map((slab, slabIndex) => (
-                                                                    <TableRow key={slabIndex}>
+                                                                {/* Module Per-Unit Fee */}
+                                                                {module.pricing_type === 'per_unit' && (module.monthly_fee || 0) > 0 && (
+                                                                    <TableRow>
                                                                         <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                            Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
+                                                                            Rate per Unit
                                                                         </TableCell>
                                                                         {projectionResults.map((result, index) => {
                                                                             // Get the unit type for this module
                                                                             const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
                                                                             const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
 
-                                                                            // Calculate fee for this specific slab
-                                                                            const slabStart = slab.from_units;
-                                                                            const slabEnd = slab.to_units || units;
-                                                                            const slabRate = slab.rate_per_unit;
-
-                                                                            let slabFee = 0;
-                                                                            if (units > slabStart) {
-                                                                                const unitsInSlab = Math.min(units, slabEnd) - Math.max(slabStart, 0);
-                                                                                slabFee = unitsInSlab * slabRate;
-                                                                            }
-
                                                                             return (
                                                                                 <TableCell key={index} className="text-right">
                                                                                     <div className="text-sm">
-                                                                                        {formatCurrency(slabFee)}
+                                                                                        {formatCurrency(module.monthly_fee || 0, currentModel.currency)} × {formatNumber(units, currentModel.currency)}
                                                                                     </div>
                                                                                 </TableCell>
                                                                             );
                                                                         })}
                                                                     </TableRow>
-                                                                ))
-                                                            )}
+                                                                )}
 
-                                                            {/* Module Minimum Fee */}
-                                                            {module.module_minimum_fee && module.module_minimum_fee > 0 && (
-                                                                <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                        Module Min Fee
-                                                                    </TableCell>
-                                                                    {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-right">
-                                                                            <div className="text-sm">
-                                                                                {formatCurrency(module.module_minimum_fee || 0)}
-                                                                            </div>
+                                                                {/* Module Slab Fees */}
+                                                                {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
+                                                                    module.slabs.map((slab, slabIndex) => (
+                                                                        <TableRow key={slabIndex}>
+                                                                            <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
+                                                                                Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
+                                                                            </TableCell>
+                                                                            {projectionResults.map((result, index) => {
+                                                                                // Get the unit type for this module
+                                                                                const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
+                                                                                const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
+
+                                                                                // Calculate fee for this specific slab
+                                                                                const slabStart = slab.from_units;
+                                                                                const slabEnd = slab.to_units || units;
+                                                                                const slabRate = slab.rate_per_unit;
+
+                                                                                let slabFee = 0;
+                                                                                if (units > slabStart) {
+                                                                                    const unitsInSlab = Math.min(units, slabEnd) - Math.max(slabStart, 0);
+                                                                                    slabFee = unitsInSlab * slabRate;
+                                                                                }
+
+                                                                                return (
+                                                                                    <TableCell key={index} className="text-right">
+                                                                                        <div className="text-sm">
+                                                                                            {formatCurrency(slabFee, currentModel.currency)}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                );
+                                                                            })}
+                                                                        </TableRow>
+                                                                    ))
+                                                                )}
+
+                                                                {/* Module Minimum Fee */}
+                                                                {(module.module_minimum_fee || 0) > 0 && (
+                                                                    <TableRow>
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
+                                                                            Module Min Fee
                                                                         </TableCell>
-                                                                    ))}
-                                                                </TableRow>
-                                                            )}
+                                                                        {projectionResults.map((_, index) => (
+                                                                            <TableCell key={index} className="text-right">
+                                                                                <div className="text-sm">
+                                                                                    {formatCurrency(module.module_minimum_fee || 0, currentModel.currency)}
+                                                                                </div>
+                                                                            </TableCell>
+                                                                        ))}
+                                                                    </TableRow>
+                                                                )}
 
-                                                            {/* Module One-time Fee */}
-                                                            {module.one_time_fee && module.one_time_fee > 0 && (
-                                                                <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
-                                                                        Setup Fee
-                                                                    </TableCell>
-                                                                    {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-right">
-                                                                            <div className="text-sm">
-                                                                                {index === 0 ? formatCurrency(module.one_time_fee || 0) : formatCurrency(0)}
-                                                                            </div>
+                                                                {/* Module One-time Fee */}
+                                                                {(module.one_time_fee || 0) > 0 && (
+                                                                    <TableRow>
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
+                                                                            Setup Fee
                                                                         </TableCell>
-                                                                    ))}
-                                                                </TableRow>
-                                                            )}
+                                                                        {projectionResults.map((_, index) => (
+                                                                            <TableCell key={index} className="text-right">
+                                                                                <div className="text-sm">
+                                                                                    {index === 0 ? formatCurrency(module.one_time_fee || 0, currentModel.currency) : '—'}
+                                                                                </div>
+                                                                            </TableCell>
+                                                                        ))}
+                                                                    </TableRow>
+                                                                )}
 
-                                                            {/* Module Total */}
-                                                            <TableRow className="border-b border-muted">
-                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm text-left">
-                                                                    {module.module_name} Total
+                                                                {/* Module Total - Only show if module has fees */}
+                                                                {((module.pricing_type === 'flat' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                                    (module.pricing_type === 'per_unit' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                                    (module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0) ||
+                                                                    (module.module_minimum_fee && module.module_minimum_fee > 0) ||
+                                                                    (module.one_time_fee && module.one_time_fee > 0)) && (
+                                                                        <TableRow className="border-b border-muted">
+                                                                            <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm text-left">
+                                                                                {module.module_name} Total
+                                                                            </TableCell>
+                                                                            {projectionResults.map((result, index) => {
+                                                                                const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
+                                                                                return (
+                                                                                    <TableCell key={index} className="text-right font-semibold">
+                                                                                        <div className="text-sm">
+                                                                                            {moduleFee && moduleFee.fee > 0 ? formatCurrency(moduleFee.fee, currentModel.currency) : '—'}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                );
+                                                                            })}
+                                                                        </TableRow>
+                                                                    )}
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+
+                                                    {/* Grand Total Row - Show if there are modules with fees OR model-level fees */}
+                                                    {(currentModel.modules.some(module => {
+                                                        return (module.pricing_type === 'flat' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                            (module.pricing_type === 'per_unit' && module.monthly_fee && module.monthly_fee > 0) ||
+                                                            (module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0) ||
+                                                            (module.module_minimum_fee && module.module_minimum_fee > 0) ||
+                                                            (module.one_time_fee && module.one_time_fee > 0);
+                                                    }) || currentModel.minimum_fee > 0 || currentModel.implementation_fee > 0) && (
+                                                            <TableRow className="border-t-2 border-primary bg-slate-100">
+                                                                <TableCell className="sticky left-0 bg-slate-100 z-20 font-bold text-sm text-left">
+                                                                    Grand Total
                                                                 </TableCell>
-                                                                {projectionResults.map((result, index) => {
-                                                                    const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
-                                                                    return (
-                                                                        <TableCell key={index} className="text-right font-semibold">
-                                                                            <div className="text-sm">
-                                                                                {formatCurrency(moduleFee?.fee || 0)}
-                                                                            </div>
-                                                                        </TableCell>
-                                                                    );
-                                                                })}
+                                                                {projectionResults.map((result, index) => (
+                                                                    <TableCell key={index} className="text-right font-bold bg-slate-100">
+                                                                        <div className="text-sm">
+                                                                            {formatCurrency(result.total_fee, currentModel.currency)}
+                                                                        </div>
+                                                                    </TableCell>
+                                                                ))}
                                                             </TableRow>
-                                                        </React.Fragment>
-                                                    ))}
-
-                                                    {/* Grand Total Row */}
-                                                    <TableRow className="border-t-2 border-primary bg-primary/5">
-                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-sm text-left">
-                                                            Grand Total
-                                                        </TableCell>
-                                                        {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-right font-bold">
-                                                                <div className="text-sm">
-                                                                    {formatCurrency(result.total_fee)}
-                                                                </div>
-                                                            </TableCell>
-                                                        ))}
-                                                    </TableRow>
+                                                        )}
                                                 </TableBody>
                                             </Table>
                                         </div>
@@ -1630,8 +1159,348 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Right Panel - Configuration */}
+                    {isLeftPanelOpen && (
+                        <div className="lg:col-span-1 space-y-6 h-full overflow-auto">
+
+                            {/* Model Configuration */}
+                            <Collapsible open={isModelConfigOpen} onOpenChange={setIsModelConfigOpen}>
+                                <Card>
+                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                        <CollapsibleTrigger asChild>
+                                            <div className="flex items-center gap-2 w-full">
+                                                <Settings className="h-5 w-5" />
+                                                <span className="font-semibold">Model Configuration</span>
+                                                {isModelConfigOpen ? (
+                                                    <ChevronDown className="h-4 w-4 ml-auto" />
+                                                ) : (
+                                                    <ChevronRight className="h-4 w-4 ml-auto" />
+                                                )}
+                                            </div>
+                                        </CollapsibleTrigger>
+                                    </CardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="space-y-4">
+                                            <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium">Currency:</span>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {SUPPORTED_CURRENCIES.find(c => c.code === currentModel.currency)?.name || currentModel.currency}
+                                                        <span className="ml-1">({getCurrencySymbol(currentModel.currency)})</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label htmlFor="minimum-fee">Platform Fee</Label>
+                                                    <NumberInput
+                                                        id="minimum-fee"
+                                                        value={currentModel.minimum_fee}
+                                                        currency={currentModel.currency}
+                                                        onChange={(value) => {
+                                                            const updatedModel = { ...currentModel, minimum_fee: value };
+                                                            setCurrentModel(updatedModel);
+                                                            saveToDatabase(updatedModel);
+                                                        }}
+                                                    // placeholder="0"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="implementation-fee">Implementation Fee</Label>
+                                                    <NumberInput
+                                                        id="implementation-fee"
+                                                        value={currentModel.implementation_fee}
+                                                        currency={currentModel.currency}
+                                                        onChange={(value) => setCurrentModel(prev => ({ ...prev, implementation_fee: value }))}
+                                                    // placeholder="0"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+
+
+                            {/* Modules */}
+                            <Collapsible open={isModulesOpen} onOpenChange={setIsModulesOpen}>
+                                <Card>
+                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                        <CollapsibleTrigger asChild>
+                                            <div className="flex items-center gap-2 w-full">
+                                                <Package className="h-5 w-5" />
+                                                <span className="font-semibold">Modules</span>
+                                                {isModulesOpen ? (
+                                                    <ChevronDown className="h-4 w-4 ml-auto" />
+                                                ) : (
+                                                    <ChevronRight className="h-4 w-4 ml-auto" />
+                                                )}
+                                            </div>
+                                        </CollapsibleTrigger>
+                                    </CardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent>
+                                            <div className="space-y-3">
+                                                {currentModel.modules.map((module, index) => (
+                                                    <Card key={module.id} className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-medium text-sm">{module.module_name || 'Unnamed Module'}</h4>
+                                                                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                                                    <div>Type: {module.pricing_type === 'flat' ? 'Flat Rate' : module.pricing_type === 'per_unit' ? 'Per Unit' : 'Slab Pricing'}</div>
+                                                                    {module.unit_type_id && (
+                                                                        <div>Unit: {currentModel.unit_types?.find(ut => ut.id === module.unit_type_id)?.name || 'Unknown'}</div>
+                                                                    )}
+                                                                    {(module.monthly_fee || 0) > 0 && (
+                                                                        <div>Rate: {formatCurrency(module.monthly_fee || 0, currentModel.currency)} {module.pricing_type === 'flat' ? '/month' : '/unit'}</div>
+                                                                    )}
+                                                                    {(module.module_minimum_fee || 0) > 0 && (
+                                                                        <div>Min Fee: {formatCurrency(module.module_minimum_fee || 0, currentModel.currency)}/month</div>
+                                                                    )}
+                                                                    {(module.one_time_fee || 0) > 0 && (
+                                                                        <div>Setup: {formatCurrency(module.one_time_fee || 0, currentModel.currency)}</div>
+                                                                    )}
+                                                                    {module.slabs && module.slabs.length > 0 && (
+                                                                        <div>Slabs: {module.slabs.length} tier(s)</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleEditModule(module)}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const updatedModules = currentModel.modules.filter((_, i) => i !== index);
+                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                ))}
+
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full"
+                                                    onClick={handleAddModule}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Add Module
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                </Card>
+                            </Collapsible>
+                        </div>
+                    )}
+
                 </div>
             </div>
+
+            {/* Module Modal */}
+            <Dialog open={isModuleModalOpen} onOpenChange={setIsModuleModalOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingModule ? 'Edit Module' : 'Add Module'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {/* Module Selection */}
+                        <div>
+                            <Label>Select Module</Label>
+                            <Select
+                                value={editingModule?.module_name?.trim() || ''}
+                                onValueChange={(value) => {
+                                    if (editingModule) {
+                                        setEditingModule(prev => prev ? { ...prev, module_name: value.trim() } : null);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Choose a module" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {moduleCatalogue.map((catalogueModule) => (
+                                        <SelectItem key={catalogueModule.id} value={catalogueModule.name.trim()}>
+                                            {catalogueModule.name.trim()}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Pricing Type */}
+                        <div>
+                            <Label>Pricing Type</Label>
+                            <Select
+                                value={editingModule?.pricing_type || 'flat'}
+                                onValueChange={(value: PricingType) => {
+                                    if (editingModule) {
+                                        setEditingModule(prev => prev ? { ...prev, pricing_type: value } : null);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="flat">Flat Rate</SelectItem>
+                                    <SelectItem value="per_unit">Per Unit</SelectItem>
+                                    <SelectItem value="slab">Slab Pricing</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Unit Type - Only for usage-based modules */}
+                        {(editingModule?.pricing_type === 'per_unit' || editingModule?.pricing_type === 'slab') && (
+                            <div>
+                                <Label>Unit Type</Label>
+                                <Select
+                                    value={editingModule?.unit_type_id || ''}
+                                    onValueChange={(value: string) => {
+                                        if (editingModule) {
+                                            setEditingModule(prev => prev ? { ...prev, unit_type_id: value } : null);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Unit Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {currentModel.unit_types?.map((unitType) => (
+                                            <SelectItem key={unitType.id} value={unitType.id}>
+                                                {unitType.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {/* Fee Configuration based on pricing type */}
+                        {editingModule?.pricing_type === 'flat' && (
+                            <div>
+                                <Label>Monthly Fee</Label>
+                                <NumberInput
+                                    value={editingModule?.monthly_fee || 0}
+                                    currency={currentModel.currency}
+                                    onChange={(value) => {
+                                        if (editingModule) {
+                                            setEditingModule(prev => prev ? { ...prev, monthly_fee: value } : null);
+                                        }
+                                    }}
+                                    placeholder="e.g., 100"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Fixed monthly fee for this module
+                                </p>
+                            </div>
+                        )}
+
+                        {editingModule?.pricing_type === 'per_unit' && (
+                            <div>
+                                <Label>Rate per Unit</Label>
+                                <NumberInput
+                                    value={editingModule?.monthly_fee || 0}
+                                    currency={currentModel.currency}
+                                    onChange={(value) => {
+                                        if (editingModule) {
+                                            setEditingModule(prev => prev ? { ...prev, monthly_fee: value } : null);
+                                        }
+                                    }}
+                                    placeholder="e.g., 2.50"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Rate charged per unit consumed
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Optional minimum fee for usage-based modules */}
+                        {(editingModule?.pricing_type === 'per_unit' || editingModule?.pricing_type === 'slab') && (
+                            <div>
+                                <Label>Minimum Monthly Fee (Optional)</Label>
+                                <NumberInput
+                                    value={editingModule?.module_minimum_fee || 0}
+                                    currency={currentModel.currency}
+                                    onChange={(value) => {
+                                        if (editingModule) {
+                                            setEditingModule(prev => prev ? { ...prev, module_minimum_fee: value } : null);
+                                        }
+                                    }}
+                                    placeholder="e.g., 25"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Ensures minimum revenue even with low usage
+                                </p>
+                            </div>
+                        )}
+
+                        {/* One-time setup fee */}
+                        <div>
+                            <Label>One-time Setup Fee (Optional)</Label>
+                            <NumberInput
+                                value={editingModule?.one_time_fee || 0}
+                                currency={currentModel.currency}
+                                onChange={(value) => {
+                                    if (editingModule) {
+                                        setEditingModule(prev => prev ? { ...prev, one_time_fee: value } : null);
+                                    }
+                                }}
+                                placeholder="e.g., 500"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Charged once during implementation
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleModuleModalClose}>
+                            Cancel
+                        </Button>
+                        <Button onClick={async () => {
+                            if (editingModule) {
+                                if (!isEditingModule) {
+                                    // New module - add it to the model
+                                    const updatedModel = {
+                                        ...currentModel,
+                                        modules: [...currentModel.modules, editingModule]
+                                    };
+                                    setCurrentModel(prev => ({
+                                        ...prev,
+                                        modules: [...prev.modules, editingModule]
+                                    }));
+                                    await saveToDatabase(updatedModel);
+                                } else {
+                                    // Existing module - update it
+                                    const updatedModules = currentModel.modules.map(m =>
+                                        m.id === editingModule.id ? editingModule : m
+                                    );
+                                    const updatedModel = { ...currentModel, modules: updatedModules };
+                                    setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                    await saveToDatabase(updatedModel);
+                                }
+                            }
+                            handleModuleModalClose();
+                        }}>
+                            {isEditingModule ? 'Update Module' : 'Add Module'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

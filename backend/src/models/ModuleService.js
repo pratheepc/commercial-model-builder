@@ -2,14 +2,14 @@ import { ModuleCatalogue, Model, ModelUnitType } from './MongoModels.js';
 
 // Default module catalogue
 const DEFAULT_MODULE_CATALOGUE = [
-  { name: 'Analytics', description: 'Advanced analytics and reporting' },
-  { name: 'Support', description: 'Customer support and helpdesk' },
-  { name: 'Storage', description: 'Data storage and backup' },
-  { name: 'API Access', description: 'REST API and webhooks' },
-  { name: 'Security', description: 'Advanced security features' },
-  { name: 'Integration', description: 'Third-party integrations' },
-  { name: 'Customization', description: 'Custom branding and features' },
-  { name: 'Training', description: 'User training and onboarding' },
+  { name: 'Analytics' },
+  { name: 'Support' },
+  { name: 'Storage' },
+  { name: 'API Access' },
+  { name: 'Security' },
+  { name: 'Integration' },
+  { name: 'Customization' },
+  { name: 'Training' },
 ];
 
 export class ModuleService {

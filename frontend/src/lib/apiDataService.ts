@@ -7,6 +7,7 @@ function convertMongoModelToModel(mongoModel: any): Model {
     id: mongoModel._id,
     name: mongoModel.name,
     description: mongoModel.description || '',
+    currency: mongoModel.currency || 'USD',
     minimum_fee: mongoModel.minimum_fee || 0,
     implementation_fee: mongoModel.implementation_fee || 0,
     status: mongoModel.status || 'active',
@@ -54,7 +55,6 @@ function convertMongoModuleToCatalogue(mongoModule: any): ModuleCatalogue {
   return {
     id: mongoModule._id,
     name: mongoModule.name,
-    description: mongoModule.description || '',
     product_id: mongoModule.product_id
   };
 }

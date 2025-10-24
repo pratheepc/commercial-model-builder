@@ -61,6 +61,7 @@ const moduleSchema = new mongoose.Schema({
 const modelSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   description: { type: String, default: '' },
+  currency: { type: String, required: true, default: 'USD' },
   minimum_fee: { type: Number, default: 0 },
   implementation_fee: { type: Number, default: 0 },
   status: { 
@@ -84,7 +85,6 @@ const productSchema = new mongoose.Schema({
 // Module Catalogue Schema
 const moduleCatalogueSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: { type: String, default: '' },
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: false }
 }, {
   timestamps: true

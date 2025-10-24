@@ -139,6 +139,7 @@ export function UnitTypeManagement({ model, onModelUpdate }: UnitTypeManagementP
                         unitTypes={paginatedUnitTypes}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        currency={model.currency}
                     />
                 </CardContent>
             </Card>

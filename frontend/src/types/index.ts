@@ -7,10 +7,30 @@ export type ProjectionInterval = 'monthly' | 'yearly';
 export type ParentType = 'model' | 'module';
 export type UnitGrowthType = 'fixed' | 'percentage';
 
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+export const SUPPORTED_CURRENCIES: Currency[] = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+];
+
 export interface Model {
   id: string;
   name: string;
   description?: string;
+  currency: string;
   minimum_fee: number;
   implementation_fee: number;
   status: 'active' | 'archived';
@@ -31,7 +51,6 @@ export interface Product {
 export interface ModuleCatalogue {
   id: string;
   name: string;
-  description?: string;
   product_id: string;
 }
 
@@ -100,6 +119,7 @@ export interface ProjectionResult {
 export interface CreateModelData {
   name: string;
   description?: string;
+  currency: string;
 }
 
 export interface CreateModuleData {
@@ -138,12 +158,12 @@ export interface CreateProjectionData {
 
 // Default module catalogue - can be modified by users
 export const DEFAULT_MODULE_CATALOGUE: ModuleCatalogue[] = [
-  { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and reporting', product_id: '' },
-  { id: 'support', name: 'Support', description: 'Customer support and helpdesk', product_id: '' },
-  { id: 'storage', name: 'Storage', description: 'Data storage and backup', product_id: '' },
-  { id: 'api', name: 'API Access', description: 'REST API and webhooks', product_id: '' },
-  { id: 'security', name: 'Security', description: 'Advanced security features', product_id: '' },
-  { id: 'integration', name: 'Integration', description: 'Third-party integrations', product_id: '' },
-  { id: 'customization', name: 'Customization', description: 'Custom branding and features', product_id: '' },
-  { id: 'training', name: 'Training', description: 'User training and onboarding', product_id: '' },
+  { id: 'analytics', name: 'Analytics', product_id: '' },
+  { id: 'support', name: 'Support', product_id: '' },
+  { id: 'storage', name: 'Storage', product_id: '' },
+  { id: 'api', name: 'API Access', product_id: '' },
+  { id: 'security', name: 'Security', product_id: '' },
+  { id: 'integration', name: 'Integration', product_id: '' },
+  { id: 'customization', name: 'Customization', product_id: '' },
+  { id: 'training', name: 'Training', product_id: '' },
 ];

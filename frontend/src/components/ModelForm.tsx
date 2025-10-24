@@ -5,12 +5,14 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { CreateModelData } from '@/types';
+import { CreateModelData, SUPPORTED_CURRENCIES } from '@/types';
 
 const modelSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     description: z.string().optional(),
+    currency: z.string().min(1, 'Currency is required'),
 });
 
 interface ModelFormProps {
@@ -26,12 +28,16 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
         register,
         handleSubmit,
         reset,
+        watch,
+        setValue,
+        trigger,
         formState: { errors, isSubmitting }
     } = useForm<CreateModelData>({
         resolver: zodResolver(modelSchema),
         defaultValues: initialData || {
             name: '',
             description: '',
+            currency: 'USD',
         }
     });
 
@@ -42,12 +48,14 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
             reset({
                 name: '',
                 description: '',
+                currency: 'USD',
             });
         }
     }, [initialData, reset]);
 
     const handleFormSubmit = async (data: CreateModelData) => {
         try {
+            console.log('Submitting model data:', data);
             await onSubmit(data);
             reset();
             onClose();
@@ -85,6 +93,34 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <Label htmlFor="currency">Currency *</Label>
+                        <Select
+                            value={watch('currency')}
+                            onValueChange={(value) => {
+                                setValue('currency', value);
+                                trigger('currency');
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {SUPPORTED_CURRENCIES.map((currency) => (
+                                    <SelectItem key={currency.code} value={currency.code}>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium">{currency.symbol}</span>
+                                            <span>{currency.name}</span>
+                                            <span className="text-muted-foreground">({currency.code})</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.currency && (
+                            <p className="text-sm text-destructive">{errors.currency.message}</p>
+                        )}
+                    </div>
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>

@@ -20,14 +20,13 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
     const [isEditFormOpen, setIsEditFormOpen] = useState(false);
     const [editingModule, setEditingModule] = useState<ModuleCatalogue | null>(null);
     const [deleteModule, setDeleteModule] = useState<ModuleCatalogue | null>(null);
-    const [newModule, setNewModule] = useState({ name: '', description: '', product: '' });
+    const [newModule, setNewModule] = useState({ name: '', product: '' });
 
     const handleCreateModule = async () => {
         if (!newModule.name.trim()) return;
 
         const createdModule = await apiDataService.addModuleToCatalogue({
             name: newModule.name.trim(),
-            description: newModule.description.trim() || undefined,
             product: newModule.product.trim() || undefined,
         });
 
@@ -37,7 +36,7 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
                 onCatalogueUpdate(moduleCatalogue);
             }
         }
-        setNewModule({ name: '', description: '', product: '' });
+        setNewModule({ name: '', product: '' });
         setIsCreateFormOpen(false);
     };
 
@@ -46,7 +45,6 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
 
         const updatedModule = await apiDataService.updateModuleInCatalogue(editingModule.id, {
             name: editingModule.name.trim(),
-            description: editingModule.description?.trim() || undefined,
             product: editingModule.product?.trim() || undefined,
         });
 
@@ -115,7 +113,6 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Name</TableHead>
-                                        <TableHead>Description</TableHead>
                                         <TableHead>Product</TableHead>
                                         <TableHead className="w-[100px]">Actions</TableHead>
                                     </TableRow>
@@ -124,9 +121,6 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
                                     {moduleCatalogue.map((module) => (
                                         <TableRow key={module.id}>
                                             <TableCell className="font-medium">{module.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {module.description || 'No description'}
-                                            </TableCell>
                                             <TableCell className="text-muted-foreground">
                                                 {module.product || 'No product specified'}
                                             </TableCell>
@@ -176,15 +170,6 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="module-description">Description</Label>
-                            <Input
-                                id="module-description"
-                                value={newModule.description}
-                                onChange={(e) => setNewModule(prev => ({ ...prev, description: e.target.value }))}
-                                placeholder="Brief description of the module (optional)"
-                            />
-                        </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="module-product">Product</Label>
@@ -226,15 +211,6 @@ export function ModuleCatalogueManagement({ onCatalogueUpdate }: ModuleCatalogue
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-module-description">Description</Label>
-                            <Input
-                                id="edit-module-description"
-                                value={editingModule?.description || ''}
-                                onChange={(e) => setEditingModule(prev => prev ? { ...prev, description: e.target.value } : null)}
-                                placeholder="Brief description of the module (optional)"
-                            />
-                        </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="edit-module-product">Product</Label>

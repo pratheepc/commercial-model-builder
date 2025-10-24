@@ -16,9 +16,10 @@ interface UnitTypeTableProps {
     unitTypes: ModelUnitType[];
     onEdit: (unitType: ModelUnitType) => void;
     onDelete: (unitType: ModelUnitType) => void;
+    currency?: string;
 }
 
-export function UnitTypeTable({ unitTypes, onEdit, onDelete }: UnitTypeTableProps) {
+export function UnitTypeTable({ unitTypes, onEdit, onDelete, currency }: UnitTypeTableProps) {
     return (
         <div className="rounded-md border">
             <Table>
@@ -44,7 +45,7 @@ export function UnitTypeTable({ unitTypes, onEdit, onDelete }: UnitTypeTableProp
                                 <TableCell className="font-medium">
                                     {unitType.name}
                                 </TableCell>
-                                <TableCell>{formatNumber(unitType.starting_units)}</TableCell>
+                                <TableCell>{formatNumber(unitType.starting_units, currency)}</TableCell>
                                 <TableCell>
                                     <Badge variant={unitType.growth_type === 'percentage' ? 'default' : 'secondary'}>
                                         {unitType.growth_type}
@@ -53,7 +54,7 @@ export function UnitTypeTable({ unitTypes, onEdit, onDelete }: UnitTypeTableProp
                                 <TableCell>
                                     {unitType.growth_type === 'percentage'
                                         ? `${unitType.growth_value}%`
-                                        : formatNumber(unitType.growth_value)
+                                        : formatNumber(unitType.growth_value, currency)
                                     }
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
