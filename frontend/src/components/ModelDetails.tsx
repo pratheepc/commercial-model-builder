@@ -6,14 +6,14 @@ import { ModuleManagement } from './ModuleManagement';
 import { UnitTypeManagement } from './UnitTypeManagement';
 import { ProjectionForm } from './ProjectionForm';
 import { ProjectionResults } from './ProjectionResults';
+import { DynamicModelPlayground } from './DynamicModelPlayground';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Calculator, Settings, Save } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { ArrowLeft, Plus, Calculator, Settings, Save, Play } from 'lucide-react';
 
 interface ModelDetailsProps {
     model: Model;
@@ -31,6 +31,7 @@ export function ModelDetails({ model, onBack }: ModelDetailsProps) {
         minimum_fee: model.minimum_fee,
         implementation_fee: model.implementation_fee,
     });
+    const [viewMode, setViewMode] = useState<'traditional' | 'playground'>('traditional');
 
     const handleCreateProjection = async (data: CreateProjectionData) => {
         try {
@@ -102,6 +103,11 @@ export function ModelDetails({ model, onBack }: ModelDetailsProps) {
         window.URL.revokeObjectURL(url);
     };
 
+    // If playground mode, render the dynamic playground
+    if (viewMode === 'playground') {
+        return <DynamicModelPlayground model={currentModel} onBack={onBack} />;
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -118,6 +124,22 @@ export function ModelDetails({ model, onBack }: ModelDetailsProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant={viewMode === 'playground' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('playground')}
+                        className="flex items-center gap-2"
+                    >
+                        <Play className="h-4 w-4" />
+                        Dynamic Playground
+                    </Button>
+                    <Button
+                        variant={viewMode === 'traditional' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('traditional')}
+                        className="flex items-center gap-2"
+                    >
+                        <Settings className="h-4 w-4" />
+                        Traditional View
+                    </Button>
                     <Badge variant={currentModel.status === 'active' ? 'default' : 'secondary'}>
                         {currentModel.status}
                     </Badge>
