@@ -134,45 +134,51 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 projectionConfig.interval
             );
 
-            const editableResults: EditableProjectionRow[] = results.map((result, index) => {
-                const startDate = new Date(projectionConfig.startDate);
-                const currentDate = new Date(startDate);
+                const editableResults: EditableProjectionRow[] = results.map((result, index) => {
+                    const startDate = new Date(projectionConfig.startDate);
+                    const currentDate = new Date(startDate);
 
-                if (projectionConfig.interval === 'monthly') {
-                    currentDate.setMonth(startDate.getMonth() + index);
-                } else {
-                    currentDate.setFullYear(startDate.getFullYear() + index);
-                }
+                    if (projectionConfig.interval === 'monthly') {
+                        currentDate.setMonth(startDate.getMonth() + index);
+                    } else {
+                        currentDate.setFullYear(startDate.getFullYear() + index);
+                    }
 
-                // Calculate module fees for this period
-                const moduleFees: Array<{ module_name: string; fee: number }> = [];
-                let totalModuleFees = 0;
+                    // Month 0 always has 0 units
+                    const units = index === 0 ? 0 : result.units;
 
-                for (const module of currentModel.modules) {
-                    const moduleFee = calculateModuleFee(result.units, module);
-                    totalModuleFees += moduleFee;
-                    moduleFees.push({
-                        module_name: module.module_name,
-                        fee: moduleFee
-                    });
-                }
+                    // Calculate module fees for this period
+                    const moduleFees: Array<{ module_name: string; fee: number }> = [];
+                    let totalModuleFees = 0;
 
-                // Apply minimum fee
-                const finalFee = Math.max(totalModuleFees, currentModel.minimum_fee);
+                    for (const module of currentModel.modules) {
+                        const moduleFee = calculateModuleFee(units, module);
+                        totalModuleFees += moduleFee;
+                        moduleFees.push({
+                            module_name: module.module_name,
+                            fee: moduleFee
+                        });
+                    }
 
-                return {
-                    period: index + 1,
-                    date: currentDate.toISOString(),
-                    units: result.units,
-                    total_fee: finalFee + (index === 0 ? currentModel.implementation_fee : 0),
-                    breakdown: {
-                        module_fees: moduleFees,
-                        minimum_fee: currentModel.minimum_fee,
-                        implementation_fee: index === 0 ? currentModel.implementation_fee : 0
-                    },
-                    isEditable: index > 0, // First period is not editable (starting units)
-                };
-            });
+                    // Apply minimum fee
+                    const finalFee = Math.max(totalModuleFees, currentModel.minimum_fee);
+
+                    // Implementation fee applies to both month 0 and month 1
+                    const hasImplementationFee = index === 0 || index === 1;
+
+                    return {
+                        period: index + 1,
+                        date: currentDate.toISOString(),
+                        units: units,
+                        total_fee: finalFee + (hasImplementationFee ? currentModel.implementation_fee : 0),
+                        breakdown: {
+                            module_fees: moduleFees,
+                            minimum_fee: currentModel.minimum_fee,
+                            implementation_fee: hasImplementationFee ? currentModel.implementation_fee : 0
+                        },
+                        isEditable: index > 0, // First period is not editable (starting units)
+                    };
+                });
 
             setProjectionResults(editableResults);
         } catch (error) {
@@ -188,7 +194,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         updatedResults[rowIndex].units = newUnits;
 
         // Recalculate fees for this period
-        const recalculatedFee = calculateTotalFeeForPeriod(updatedResults[rowIndex].units, currentModel);
+        const recalculatedFee = calculateTotalFeeForPeriod(updatedResults[rowIndex].units, currentModel, rowIndex);
         updatedResults[rowIndex].total_fee = recalculatedFee.total;
         updatedResults[rowIndex].breakdown = recalculatedFee.breakdown;
 
@@ -198,7 +204,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             const newUnits = Math.round(updatedResults[rowIndex].units * growthFactor);
             updatedResults[i].units = newUnits;
 
-            const recalculatedFee = calculateTotalFeeForPeriod(newUnits, currentModel);
+            const recalculatedFee = calculateTotalFeeForPeriod(newUnits, currentModel, i);
             updatedResults[i].total_fee = recalculatedFee.total;
             updatedResults[i].breakdown = recalculatedFee.breakdown;
         }
@@ -214,7 +220,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         }
     };
 
-    const calculateTotalFeeForPeriod = (units: number, model: Model) => {
+    const calculateTotalFeeForPeriod = (units: number, model: Model, periodIndex: number) => {
         let totalFee = 0;
         const moduleFees: Array<{ module_name: string; fee: number }> = [];
 
@@ -232,8 +238,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
         const minimumFee = model.minimum_fee;
         totalFee = Math.max(totalFee, minimumFee);
 
-        // Add implementation fee (only for first period)
-        const implementationFee = model.implementation_fee;
+        // Implementation fee applies to both month 0 and month 1
+        const hasImplementationFee = periodIndex === 0 || periodIndex === 1;
+        const implementationFee = hasImplementationFee ? model.implementation_fee : 0;
 
         return {
             total: totalFee + implementationFee,
