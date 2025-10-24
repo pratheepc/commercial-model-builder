@@ -49,6 +49,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     const [moduleCatalogue, setModuleCatalogue] = useState<any[]>([]);
     const [isModelConfigOpen, setIsModelConfigOpen] = useState(true);
     const [isModulesOpen, setIsModulesOpen] = useState(true);
+    const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -332,6 +333,18 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+                                className="flex items-center gap-2"
+                            >
+                                {isLeftPanelOpen ? (
+                                    <ChevronRight className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
+                            </Button>
                             <Dialog open={isUnitTypesOpen} onOpenChange={setIsUnitTypesOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" className="flex items-center gap-2">
@@ -468,9 +481,10 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto">
-                <div className="min-h-full grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
+                <div className={`min-h-full grid grid-cols-1 gap-6 p-6 transition-all duration-300 ${isLeftPanelOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
                     {/* Left Panel - Configuration */}
-                    <div className="lg:col-span-1 space-y-6">
+                    {isLeftPanelOpen && (
+                        <div className="lg:col-span-1 space-y-6">
 
                         {/* Model Configuration */}
                         <Collapsible open={isModelConfigOpen} onOpenChange={setIsModelConfigOpen}>
@@ -873,10 +887,11 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                 </CollapsibleContent>
                             </Card>
                         </Collapsible>
-                    </div>
+                        </div>
+                    )}
 
                     {/* Right Panel - Projection Table */}
-                    <div className="lg:col-span-3">
+                    <div className={`${isLeftPanelOpen ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
                         <Card className="min-h-[600px]">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
