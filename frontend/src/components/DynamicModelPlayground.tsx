@@ -482,7 +482,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto">
-                <div className={`min-h-full grid grid-cols-1 gap-6 p-6 transition-all duration-300 ${isLeftPanelOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
+                <div className={`min-h-full grid grid-cols-1 gap-6 transition-all duration-300 ${isLeftPanelOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
                     {/* Left Panel - Configuration */}
                     {isLeftPanelOpen && (
                         <div className="lg:col-span-1 space-y-6">
