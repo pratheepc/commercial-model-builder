@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, Calculator, TrendingUp, Package, Settings, Settings2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowLeft, Plus, Trash2, Calculator, TrendingUp, Package, Settings, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface DynamicModelPlaygroundProps {
@@ -46,6 +47,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     const [isProjectionSettingsOpen, setIsProjectionSettingsOpen] = useState(false);
     const [isUnitTypesOpen, setIsUnitTypesOpen] = useState(false);
     const [moduleCatalogue, setModuleCatalogue] = useState<any[]>([]);
+    const [isModelConfigOpen, setIsModelConfigOpen] = useState(true);
+    const [isModulesOpen, setIsModulesOpen] = useState(true);
 
     // Auto-save function
     const saveToDatabase = async (updatedModel: Model) => {
@@ -470,50 +473,70 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     <div className="lg:col-span-1 space-y-6">
 
                         {/* Model Configuration */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Settings className="h-5 w-5" />
-                                    Model Configuration
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="minimum-fee">Minimum Fee</Label>
-                                        <NumberInput
-                                            id="minimum-fee"
-                                            value={currentModel.minimum_fee}
-                                            onChange={(value) => {
-                                                const updatedModel = { ...currentModel, minimum_fee: value };
-                                                setCurrentModel(updatedModel);
-                                                saveToDatabase(updatedModel);
-                                            }}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="implementation-fee">Implementation Fee</Label>
-                                        <NumberInput
-                                            id="implementation-fee"
-                                            value={currentModel.implementation_fee}
-                                            onChange={(value) => setCurrentModel(prev => ({ ...prev, implementation_fee: value }))}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <Collapsible open={isModelConfigOpen} onOpenChange={setIsModelConfigOpen}>
+                            <Card>
+                                <CollapsibleTrigger asChild>
+                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Settings className="h-5 w-5" />
+                                            Model Configuration
+                                            {isModelConfigOpen ? (
+                                                <ChevronDown className="h-4 w-4 ml-auto" />
+                                            ) : (
+                                                <ChevronRight className="h-4 w-4 ml-auto" />
+                                            )}
+                                        </CardTitle>
+                                    </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="minimum-fee">Minimum Fee</Label>
+                                                <NumberInput
+                                                    id="minimum-fee"
+                                                    value={currentModel.minimum_fee}
+                                                    onChange={(value) => {
+                                                        const updatedModel = { ...currentModel, minimum_fee: value };
+                                                        setCurrentModel(updatedModel);
+                                                        saveToDatabase(updatedModel);
+                                                    }}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="implementation-fee">Implementation Fee</Label>
+                                                <NumberInput
+                                                    id="implementation-fee"
+                                                    value={currentModel.implementation_fee}
+                                                    onChange={(value) => setCurrentModel(prev => ({ ...prev, implementation_fee: value }))}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
 
 
                         {/* Modules */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Package className="h-5 w-5" />
-                                    Modules
-                                </CardTitle>
-                            </CardHeader>
+                        <Collapsible open={isModulesOpen} onOpenChange={setIsModulesOpen}>
+                            <Card>
+                                <CollapsibleTrigger asChild>
+                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Package className="h-5 w-5" />
+                                            Modules
+                                            {isModulesOpen ? (
+                                                <ChevronDown className="h-4 w-4 ml-auto" />
+                                            ) : (
+                                                <ChevronRight className="h-4 w-4 ml-auto" />
+                                            )}
+                                        </CardTitle>
+                                    </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
                             <CardContent>
                                 <div className="space-y-3">
                                     {currentModel.modules.map((module, index) => (
@@ -847,7 +870,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                     </Button>
                                 </div>
                             </CardContent>
-                        </Card>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                     </div>
 
                     {/* Right Panel - Projection Table */}
