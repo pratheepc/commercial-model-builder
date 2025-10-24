@@ -468,26 +468,26 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto">
-                <div className="min-h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+                <div className="min-h-full grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
                     {/* Left Panel - Configuration */}
                     <div className="lg:col-span-1 space-y-6">
 
                         {/* Model Configuration */}
                         <Collapsible open={isModelConfigOpen} onOpenChange={setIsModelConfigOpen}>
                             <Card>
-                                <CollapsibleTrigger asChild>
-                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <CardTitle className="flex items-center gap-2">
+                                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <CollapsibleTrigger asChild>
+                                        <div className="flex items-center gap-2 w-full">
                                             <Settings className="h-5 w-5" />
-                                            Model Configuration
+                                            <span className="font-semibold">Model Configuration</span>
                                             {isModelConfigOpen ? (
                                                 <ChevronDown className="h-4 w-4 ml-auto" />
                                             ) : (
                                                 <ChevronRight className="h-4 w-4 ml-auto" />
                                             )}
-                                        </CardTitle>
-                                    </CardHeader>
-                                </CollapsibleTrigger>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                </CardHeader>
                                 <CollapsibleContent>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
@@ -523,19 +523,19 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                         {/* Modules */}
                         <Collapsible open={isModulesOpen} onOpenChange={setIsModulesOpen}>
                             <Card>
-                                <CollapsibleTrigger asChild>
-                                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <CardTitle className="flex items-center gap-2">
+                                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <CollapsibleTrigger asChild>
+                                        <div className="flex items-center gap-2 w-full">
                                             <Package className="h-5 w-5" />
-                                            Modules
+                                            <span className="font-semibold">Modules</span>
                                             {isModulesOpen ? (
                                                 <ChevronDown className="h-4 w-4 ml-auto" />
                                             ) : (
                                                 <ChevronRight className="h-4 w-4 ml-auto" />
                                             )}
-                                        </CardTitle>
-                                    </CardHeader>
-                                </CollapsibleTrigger>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                </CardHeader>
                                 <CollapsibleContent>
                             <CardContent>
                                 <div className="space-y-3">
@@ -876,7 +876,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     </div>
 
                     {/* Right Panel - Projection Table */}
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-3">
                         <Card className="min-h-[600px]">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
