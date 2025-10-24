@@ -959,18 +959,18 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             <Table>
                                                 <TableHeader className="sticky top-0 bg-white">
                                                     <TableRow>
-                                                        <TableHead className="sticky left-0 bg-white z-10 min-w-[200px]">Module</TableHead>
+                                                        <TableHead className="sticky left-0 bg-white z-10 min-w-[180px]">Module</TableHead>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableHead key={index} className="text-center min-w-[120px]">
+                                                            <TableHead key={index} className="text-center min-w-[100px]">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-medium">
+                                                                    <span className="font-medium text-sm">
                                                                         {projectionConfig.interval === 'monthly'
                                                                             ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                                                                             : new Date(result.date).getFullYear().toString()
                                                                         }
                                                                     </span>
                                                                     <span className="text-xs text-muted-foreground">
-                                                                        Period {result.period}
+                                                                        P{result.period}
                                                                     </span>
                                                                 </div>
                                                             </TableHead>
@@ -1009,8 +1009,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
                                                     {/* Model Minimum Fee Row */}
                                                     <TableRow>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                            Model Minimum Fee
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm">
+                                                            Model Min Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-center">
@@ -1021,8 +1021,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
                                                     {/* Model Implementation Fee Row */}
                                                     <TableRow>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                            Model Implementation Fee
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm">
+                                                            Model Impl Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
                                                             <TableCell key={index} className="text-center">
@@ -1041,7 +1041,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                 </TableCell>
                                                                 {projectionResults.map((_, index) => (
                                                                     <TableCell key={index} className="text-center font-bold text-primary">
-                                                                        {module.module_name}
+                                                                        —
                                                                     </TableCell>
                                                                 ))}
                                                             </TableRow>
@@ -1049,7 +1049,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             {/* Module Monthly Fee */}
                                                             {module.pricing_type === 'flat' && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
                                                                         Monthly Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
@@ -1063,7 +1063,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             {/* Module Per-Unit Fee */}
                                                             {module.pricing_type === 'per_unit' && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
                                                                         Rate per Unit
                                                                     </TableCell>
                                                                     {projectionResults.map((result, index) => (
@@ -1078,8 +1078,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
                                                                 module.slabs.map((slab, slabIndex) => (
                                                                     <TableRow key={slabIndex}>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6">
-                                                                            Slab {slabIndex + 1} ({slab.from_units} - {slab.to_units || '∞'})
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                            Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
                                                                         </TableCell>
                                                                         {projectionResults.map((result, index) => {
                                                                             // Calculate fee for this specific slab
@@ -1106,8 +1106,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             {/* Module Minimum Fee */}
                                                             {module.module_minimum_fee && module.module_minimum_fee > 0 && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
-                                                                        Module Minimum Fee
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                        Module Min Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
                                                                         <TableCell key={index} className="text-center">
@@ -1120,8 +1120,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             {/* Module One-time Fee */}
                                                             {module.one_time_fee && module.one_time_fee > 0 && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6">
-                                                                        One-time Setup Fee
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                        Setup Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
                                                                         <TableCell key={index} className="text-center">
@@ -1133,7 +1133,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
 
                                                             {/* Module Total */}
                                                             <TableRow className="border-b border-muted">
-                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4">
+                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm">
                                                                     {module.module_name} Total
                                                                 </TableCell>
                                                                 {projectionResults.map((result, index) => {
