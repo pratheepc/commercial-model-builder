@@ -203,7 +203,11 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                 let totalModuleFees = 0;
 
                 for (const module of currentModel.modules) {
-                    const moduleFee = calculateModuleFee(units, module);
+                    // Get the unit type for this module and calculate units
+                    const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
+                    const moduleUnits = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
+                    
+                    const moduleFee = calculateModuleFee(moduleUnits, module);
                     totalModuleFees += moduleFee;
                     moduleFees.push({
                         module_name: module.module_name,
@@ -238,46 +242,40 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
         }
     };
 
-    const handleUnitChange = (rowIndex: number, newUnits: number) => {
+    const handleUnitChange = (rowIndex: number, newUnits: number, unitTypeId?: string) => {
         if (rowIndex === 0) return; // Don't allow editing first period
 
-        const updatedResults = [...projectionResults];
-        updatedResults[rowIndex].units = newUnits;
-
-        // Recalculate fees for this period
-        const recalculatedFee = calculateTotalFeeForPeriod(updatedResults[rowIndex].units, currentModel, rowIndex);
-        updatedResults[rowIndex].total_fee = recalculatedFee.total;
-        updatedResults[rowIndex].breakdown = recalculatedFee.breakdown;
-
-        // Recalculate subsequent periods based on growth
-        for (let i = rowIndex + 1; i < updatedResults.length; i++) {
-            const growthFactor = calculateGrowthFactor(currentModel.unit_types[0], i - rowIndex);
-            const newUnits = Math.round(updatedResults[rowIndex].units * growthFactor);
-            updatedResults[i].units = newUnits;
-
-            const recalculatedFee = calculateTotalFeeForPeriod(newUnits, currentModel, i);
-            updatedResults[i].total_fee = recalculatedFee.total;
-            updatedResults[i].breakdown = recalculatedFee.breakdown;
-        }
-
-        setProjectionResults(updatedResults);
+        // For now, we'll regenerate the entire projection since we have multiple unit types
+        // This ensures all calculations are consistent
+        generateInitialProjection();
     };
 
-    const calculateGrowthFactor = (unitType: ModelUnitType, periods: number): number => {
-        if (unitType.growth_type === 'fixed') {
-            return 1 + (unitType.growth_value * periods) / unitType.starting_units;
-        } else {
-            return Math.pow(1 + unitType.growth_value / 100, periods);
-        }
-    };
+        const calculateGrowthFactor = (unitType: ModelUnitType, periods: number): number => {
+            if (unitType.growth_type === 'fixed') {
+                return 1 + (unitType.growth_value * periods) / unitType.starting_units;
+            } else {
+                return Math.pow(1 + unitType.growth_value / 100, periods);
+            }
+        };
+
+        const calculateUnitTypeUnits = (unitType: ModelUnitType, periodIndex: number, startDate: string, interval: string): number => {
+            if (periodIndex === 0) return 0; // Month 0 always has 0 units
+            
+            const growthFactor = calculateGrowthFactor(unitType, periodIndex);
+            return Math.round(unitType.starting_units * growthFactor);
+        };
 
     const calculateTotalFeeForPeriod = (units: number, model: Model, periodIndex: number) => {
         let totalFee = 0;
         const moduleFees: Array<{ module_name: string; fee: number }> = [];
 
-        // Calculate module fees
+        // Calculate module fees using the correct unit type for each module
         for (const module of model.modules) {
-            const moduleFee = calculateModuleFee(units, module);
+            // Get the unit type for this module and calculate units
+            const moduleUnitType = model.unit_types?.find(ut => ut.id === module.unit_type_id);
+            const moduleUnits = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, periodIndex, projectionConfig.startDate, projectionConfig.interval) : 0;
+            
+            const moduleFee = calculateModuleFee(moduleUnits, module);
             totalFee += moduleFee;
             moduleFees.push({
                 module_name: module.module_name,
@@ -314,8 +312,9 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
         const { row, field } = editingCell;
         const newValue = parseFloat(tempValue);
 
-        if (field === 'units') {
-            handleUnitChange(row, newValue);
+        if (field.startsWith('units-')) {
+            const unitTypeId = field.replace('units-', '');
+            handleUnitChange(row, newValue, unitTypeId);
         }
 
         setEditingCell(null);
@@ -1048,34 +1047,45 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {/* Model Level Components */}
-                                                    {/* Units Row */}
-                                                    <TableRow>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                            Units
-                                                        </TableCell>
-                                                        {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-center">
-                                                                {editingCell?.row === index && editingCell?.field === 'units' ? (
-                                                                    <Input
-                                                                        value={tempValue}
-                                                                        onChange={(e) => setTempValue(e.target.value)}
-                                                                        onKeyDown={handleKeyPress}
-                                                                        onBlur={handleCellSave}
-                                                                        autoFocus
-                                                                        className="w-20 text-center"
-                                                                    />
-                                                                ) : (
-                                                                    <div
-                                                                        className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
-                                                                        onClick={() => result.isEditable && handleCellEdit(index, 'units', result.units)}
-                                                                    >
-                                                                        {formatNumber(result.units)}
-                                                                    </div>
-                                                                )}
+                                                    {/* Unit Types - Separate rows for each unit type */}
+                                                    {currentModel.unit_types?.map((unitType) => (
+                                                        <TableRow key={unitType.id}>
+                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium">
+                                                                {unitType.name} Units
                                                             </TableCell>
-                                                        ))}
-                                                    </TableRow>
+                                                            {projectionResults.map((result, index) => {
+                                                                // Calculate units for this specific unit type
+                                                                const unitTypeUnits = calculateUnitTypeUnits(
+                                                                    unitType,
+                                                                    index,
+                                                                    projectionConfig.startDate,
+                                                                    projectionConfig.interval
+                                                                );
+                                                                
+                                                                return (
+                                                                    <TableCell key={index} className="text-center">
+                                                                        {editingCell?.row === index && editingCell?.field === `units-${unitType.id}` ? (
+                                                                            <Input
+                                                                                value={tempValue}
+                                                                                onChange={(e) => setTempValue(e.target.value)}
+                                                                                onKeyDown={handleKeyPress}
+                                                                                onBlur={handleCellSave}
+                                                                                autoFocus
+                                                                                className="w-20 text-center"
+                                                                            />
+                                                                        ) : (
+                                                                            <div
+                                                                                className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
+                                                                                onClick={() => result.isEditable && handleCellEdit(index, `units-${unitType.id}`, unitTypeUnits)}
+                                                                            >
+                                                                                {formatNumber(unitTypeUnits)}
+                                                                            </div>
+                                                                        )}
+                                                                    </TableCell>
+                                                                );
+                                                            })}
+                                                        </TableRow>
+                                                    ))}
 
                                                     {/* Model Minimum Fee Row */}
                                                     <TableRow>
@@ -1136,11 +1146,17 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                     <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
                                                                         Rate per Unit
                                                                     </TableCell>
-                                                                    {projectionResults.map((result, index) => (
-                                                                        <TableCell key={index} className="text-center">
-                                                                            {formatCurrency(module.monthly_fee || 0)} × {formatNumber(result.units)}
-                                                                        </TableCell>
-                                                                    ))}
+                                                                    {projectionResults.map((result, index) => {
+                                                                        // Get the unit type for this module
+                                                                        const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
+                                                                        const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
+                                                                        
+                                                                        return (
+                                                                            <TableCell key={index} className="text-center">
+                                                                                {formatCurrency(module.monthly_fee || 0)} × {formatNumber(units)}
+                                                                            </TableCell>
+                                                                        );
+                                                                    })}
                                                                 </TableRow>
                                                             )}
 
@@ -1152,14 +1168,18 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                             Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
                                                                         </TableCell>
                                                                         {projectionResults.map((result, index) => {
+                                                                            // Get the unit type for this module
+                                                                            const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
+                                                                            const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
+                                                                            
                                                                             // Calculate fee for this specific slab
                                                                             const slabStart = slab.from_units;
-                                                                            const slabEnd = slab.to_units || result.units;
+                                                                            const slabEnd = slab.to_units || units;
                                                                             const slabRate = slab.rate_per_unit;
 
                                                                             let slabFee = 0;
-                                                                            if (result.units > slabStart) {
-                                                                                const unitsInSlab = Math.min(result.units, slabEnd) - Math.max(slabStart, 0);
+                                                                            if (units > slabStart) {
+                                                                                const unitsInSlab = Math.min(units, slabEnd) - Math.max(slabStart, 0);
                                                                                 slabFee = unitsInSlab * slabRate;
                                                                             }
 
