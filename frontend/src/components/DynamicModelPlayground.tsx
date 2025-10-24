@@ -955,65 +955,112 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                     </div>
                                 ) : (
                                     <div className="overflow-auto max-h-[600px]">
-                                        <Table>
-                                            <TableHeader className="sticky top-0 bg-white">
-                                                <TableRow>
-                                                    <TableHead>Period</TableHead>
-                                                    <TableHead>{projectionConfig.interval === 'monthly' ? 'Month' : 'Year'}</TableHead>
-                                                    <TableHead>Units</TableHead>
-                                                    <TableHead>Total Fee</TableHead>
-                                                    <TableHead>Module Fees</TableHead>
-                                                    <TableHead>Min Fee</TableHead>
-                                                    <TableHead>Impl Fee</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {projectionResults.map((result, index) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell className="font-medium">{result.period}</TableCell>
-                                                        <TableCell>
-                                                            {projectionConfig.interval === 'monthly'
-                                                                ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                                                                : new Date(result.date).getFullYear().toString()
-                                                            }
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {editingCell?.row === index && editingCell?.field === 'units' ? (
-                                                                <Input
-                                                                    value={tempValue}
-                                                                    onChange={(e) => setTempValue(e.target.value)}
-                                                                    onKeyDown={handleKeyPress}
-                                                                    onBlur={handleCellSave}
-                                                                    autoFocus
-                                                                    className="w-20"
-                                                                />
-                                                            ) : (
-                                                                <div
-                                                                    className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
-                                                                    onClick={() => result.isEditable && handleCellEdit(index, 'units', result.units)}
-                                                                >
-                                                                    {formatNumber(result.units)}
+                                        <div className="min-w-full">
+                                            <Table>
+                                                <TableHeader className="sticky top-0 bg-white">
+                                                    <TableRow>
+                                                        <TableHead className="sticky left-0 bg-white z-10 min-w-[200px]">Module</TableHead>
+                                                        {projectionResults.map((result, index) => (
+                                                            <TableHead key={index} className="text-center min-w-[120px]">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">
+                                                                        {projectionConfig.interval === 'monthly'
+                                                                            ? new Date(result.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                                            : new Date(result.date).getFullYear().toString()
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        Period {result.period}
+                                                                    </span>
                                                                 </div>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell className="font-semibold">
-                                                            {formatCurrency(result.total_fee)}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <div className="space-y-1">
-                                                                {result.breakdown.module_fees.map((fee, feeIndex) => (
-                                                                    <div key={feeIndex} className="text-xs">
-                                                                        {fee.module_name}: {formatCurrency(fee.fee)}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>{formatCurrency(result.breakdown.minimum_fee)}</TableCell>
-                                                        <TableCell>{formatCurrency(result.breakdown.implementation_fee)}</TableCell>
+                                                            </TableHead>
+                                                        ))}
                                                     </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {/* Units Row */}
+                                                    <TableRow>
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
+                                                            Units
+                                                        </TableCell>
+                                                        {projectionResults.map((result, index) => (
+                                                            <TableCell key={index} className="text-center">
+                                                                {editingCell?.row === index && editingCell?.field === 'units' ? (
+                                                                    <Input
+                                                                        value={tempValue}
+                                                                        onChange={(e) => setTempValue(e.target.value)}
+                                                                        onKeyDown={handleKeyPress}
+                                                                        onBlur={handleCellSave}
+                                                                        autoFocus
+                                                                        className="w-20 text-center"
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
+                                                                        onClick={() => result.isEditable && handleCellEdit(index, 'units', result.units)}
+                                                                    >
+                                                                        {formatNumber(result.units)}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+
+                                                    {/* Module Fee Rows */}
+                                                    {currentModel.modules.map((module) => (
+                                                        <TableRow key={module.id}>
+                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium">
+                                                                {module.module_name}
+                                                            </TableCell>
+                                                            {projectionResults.map((result, periodIndex) => {
+                                                                const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
+                                                                return (
+                                                                    <TableCell key={periodIndex} className="text-center">
+                                                                        {formatCurrency(moduleFee?.fee || 0)}
+                                                                    </TableCell>
+                                                                );
+                                                            })}
+                                                        </TableRow>
+                                                    ))}
+
+                                                    {/* Minimum Fee Row */}
+                                                    <TableRow>
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
+                                                            Minimum Fee
+                                                        </TableCell>
+                                                        {projectionResults.map((result, index) => (
+                                                            <TableCell key={index} className="text-center">
+                                                                {formatCurrency(result.breakdown.minimum_fee)}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+
+                                                    {/* Implementation Fee Row */}
+                                                    <TableRow>
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium">
+                                                            Implementation Fee
+                                                        </TableCell>
+                                                        {projectionResults.map((result, index) => (
+                                                            <TableCell key={index} className="text-center">
+                                                                {formatCurrency(result.breakdown.implementation_fee)}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+
+                                                    {/* Total Fee Row */}
+                                                    <TableRow className="border-t-2 border-primary">
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-bold">
+                                                            Total Fee
+                                                        </TableCell>
+                                                        {projectionResults.map((result, index) => (
+                                                            <TableCell key={index} className="text-center font-bold">
+                                                                {formatCurrency(result.total_fee)}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
