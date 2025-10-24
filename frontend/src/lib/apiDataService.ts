@@ -146,10 +146,8 @@ export const apiDataService = {
         module_name: mongoModule.module_name,
         pricing_type: mongoModule.pricing_type,
         monthly_fee: mongoModule.monthly_fee || 0,
-        annual_fee: mongoModule.annual_fee || 0,
         one_time_fee: mongoModule.one_time_fee || 0,
         module_minimum_fee: mongoModule.module_minimum_fee || 0,
-        module_implementation_fee: mongoModule.module_implementation_fee || 0,
         order: mongoModule.order || 1,
         slabs: mongoModule.slabs || []
       } : null;
@@ -169,10 +167,8 @@ export const apiDataService = {
         module_name: mongoModule.module_name,
         pricing_type: mongoModule.pricing_type,
         monthly_fee: mongoModule.monthly_fee || 0,
-        annual_fee: mongoModule.annual_fee || 0,
         one_time_fee: mongoModule.one_time_fee || 0,
         module_minimum_fee: mongoModule.module_minimum_fee || 0,
-        module_implementation_fee: mongoModule.module_implementation_fee || 0,
         order: mongoModule.order || 1,
         slabs: mongoModule.slabs || []
       } : null;

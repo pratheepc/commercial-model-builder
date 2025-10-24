@@ -52,11 +52,9 @@ export interface ModelModule {
   unit_type_id: string;
   module_name: string;
   pricing_type: PricingType;
-  monthly_fee?: number;
-  annual_fee?: number;
-  one_time_fee?: number;
-  module_minimum_fee?: number;
-  module_implementation_fee?: number;
+  monthly_fee?: number; // For flat rate or per-unit rate
+  one_time_fee?: number; // One-time setup fee
+  module_minimum_fee?: number; // Optional minimum for usage-based modules
   slabs: PricingSlab[];
   order: number;
 }

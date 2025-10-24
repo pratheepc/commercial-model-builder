@@ -36,10 +36,8 @@ let models: Model[] = [
         module_name: 'Analytics',
         pricing_type: 'slab',
         monthly_fee: 0,
-        annual_fee: 0,
         one_time_fee: 0,
         module_minimum_fee: 5000,
-        module_implementation_fee: 0,
         order: 1,
         slabs: [
           {
@@ -78,10 +76,8 @@ let models: Model[] = [
         module_name: 'Support',
         pricing_type: 'flat',
         monthly_fee: 10000,
-        annual_fee: 0,
         one_time_fee: 0,
         module_minimum_fee: 0,
-        module_implementation_fee: 0,
         order: 2,
         slabs: []
       }

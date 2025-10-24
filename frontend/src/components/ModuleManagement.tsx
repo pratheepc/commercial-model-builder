@@ -210,22 +210,10 @@ export function ModuleManagement({ model, onModelUpdate }: ModuleManagementProps
                                                     </div>
                                                 </div>
                                             )}
-                                            {module.annual_fee !== undefined && module.annual_fee > 0 && (
-                                                <div>
-                                                    <div className="text-muted-foreground">Annual Fee</div>
-                                                    <div className="font-medium">{formatCurrency(module.annual_fee)}</div>
-                                                </div>
-                                            )}
                                             {module.one_time_fee !== undefined && module.one_time_fee > 0 && (
                                                 <div>
                                                     <div className="text-muted-foreground">One-Time Fee</div>
                                                     <div className="font-medium">{formatCurrency(module.one_time_fee)}</div>
-                                                </div>
-                                            )}
-                                            {module.module_implementation_fee !== undefined && module.module_implementation_fee > 0 && (
-                                                <div>
-                                                    <div className="text-muted-foreground">Implementation Fee</div>
-                                                    <div className="font-medium">{formatCurrency(module.module_implementation_fee)}</div>
                                                 </div>
                                             )}
                                         </div>
@@ -279,10 +267,9 @@ export function ModuleManagement({ model, onModelUpdate }: ModuleManagementProps
                     module_name: editingModule.module_name,
                     pricing_type: editingModule.pricing_type,
                     monthly_fee: editingModule.monthly_fee,
-                    annual_fee: editingModule.annual_fee,
                     one_time_fee: editingModule.one_time_fee,
                     module_minimum_fee: editingModule.module_minimum_fee,
-                    module_implementation_fee: editingModule.module_implementation_fee,
+                    slabs: editingModule.slabs,
                 } : undefined}
                 title="Edit Module"
                 modelId={model.id}

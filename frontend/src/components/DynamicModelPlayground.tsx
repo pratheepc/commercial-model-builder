@@ -78,36 +78,32 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 }
             }
 
-            // Save modules
-            for (const module of updatedModel.modules || []) {
-                if (module.id.startsWith('module-')) {
-                    // New module - create it
-                    await apiDataService.addModuleToModel(updatedModel.id, {
-                        module_name: module.module_name,
-                        pricing_type: module.pricing_type,
-                        monthly_fee: module.monthly_fee,
-                        annual_fee: module.annual_fee,
-                        one_time_fee: module.one_time_fee,
-                        module_minimum_fee: module.module_minimum_fee,
-                        module_implementation_fee: module.module_implementation_fee,
-                        unit_type_id: module.unit_type_id,
-                        slabs: module.slabs
-                    });
-                } else {
-                    // Existing module - update it
-                    await apiDataService.updateModuleInModel(currentModel.id, module.id, {
-                        module_name: module.module_name,
-                        pricing_type: module.pricing_type,
-                        monthly_fee: module.monthly_fee,
-                        annual_fee: module.annual_fee,
-                        one_time_fee: module.one_time_fee,
-                        module_minimum_fee: module.module_minimum_fee,
-                        module_implementation_fee: module.module_implementation_fee,
-                        unit_type_id: module.unit_type_id,
-                        slabs: module.slabs
-                    });
+                // Save modules
+                for (const module of updatedModel.modules || []) {
+                    if (module.id.startsWith('module-')) {
+                        // New module - create it
+                        await apiDataService.addModuleToModel(updatedModel.id, {
+                            module_name: module.module_name,
+                            pricing_type: module.pricing_type,
+                            monthly_fee: module.monthly_fee,
+                            one_time_fee: module.one_time_fee,
+                            module_minimum_fee: module.module_minimum_fee,
+                            unit_type_id: module.unit_type_id,
+                            slabs: module.slabs
+                        });
+                    } else {
+                        // Existing module - update it
+                        await apiDataService.updateModuleInModel(currentModel.id, module.id, {
+                            module_name: module.module_name,
+                            pricing_type: module.pricing_type,
+                            monthly_fee: module.monthly_fee,
+                            one_time_fee: module.one_time_fee,
+                            module_minimum_fee: module.module_minimum_fee,
+                            unit_type_id: module.unit_type_id,
+                            slabs: module.slabs
+                        });
+                    }
                 }
-            }
         } catch (error) {
             console.error('Error saving to database:', error);
         } finally {
@@ -515,7 +511,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </Button>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2">
+                                            {/* Fee Configuration based on pricing type */}
+                                            {module.pricing_type === 'flat' && (
                                                 <div>
                                                     <Label>Monthly Fee</Label>
                                                     <NumberInput
@@ -524,57 +521,65 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             const updatedModules = [...currentModel.modules];
                                                             updatedModules[index] = { ...module, monthly_fee: value };
                                                             setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
                                                         }}
+                                                        placeholder="e.g., 100"
                                                     />
                                                 </div>
-                                                <div>
-                                                    <Label>Annual Fee</Label>
-                                                    <NumberInput
-                                                        value={module.annual_fee || 0}
-                                                        onChange={(value) => {
-                                                            const updatedModules = [...currentModel.modules];
-                                                            updatedModules[index] = { ...module, annual_fee: value };
-                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
+                                            )}
 
-                                            <div className="grid grid-cols-2 gap-2">
+                                            {module.pricing_type === 'per_unit' && (
                                                 <div>
-                                                    <Label>One-time Fee</Label>
+                                                    <Label>Rate per Unit</Label>
                                                     <NumberInput
-                                                        value={module.one_time_fee || 0}
+                                                        value={module.monthly_fee || 0}
                                                         onChange={(value) => {
                                                             const updatedModules = [...currentModel.modules];
-                                                            updatedModules[index] = { ...module, one_time_fee: value };
+                                                            updatedModules[index] = { ...module, monthly_fee: value };
                                                             setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
                                                         }}
+                                                        placeholder="e.g., 2.50"
                                                     />
                                                 </div>
+                                            )}
+
+                                            {/* Optional minimum fee for usage-based modules */}
+                                            {(module.pricing_type === 'per_unit' || module.pricing_type === 'slab') && (
                                                 <div>
-                                                    <Label>Module Min Fee</Label>
+                                                    <Label>Minimum Monthly Fee (Optional)</Label>
                                                     <NumberInput
                                                         value={module.module_minimum_fee || 0}
                                                         onChange={(value) => {
                                                             const updatedModules = [...currentModel.modules];
                                                             updatedModules[index] = { ...module, module_minimum_fee: value };
                                                             setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
                                                         }}
+                                                        placeholder="e.g., 25"
                                                     />
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Ensures minimum revenue even with low usage
+                                                    </p>
                                                 </div>
-                                            </div>
+                                            )}
 
+                                            {/* One-time setup fee */}
                                             <div>
-                                                <Label>Module Implementation Fee</Label>
+                                                <Label>One-time Setup Fee (Optional)</Label>
                                                 <NumberInput
-                                                    value={module.module_implementation_fee || 0}
+                                                    value={module.one_time_fee || 0}
                                                     onChange={(value) => {
                                                         const updatedModules = [...currentModel.modules];
-                                                        updatedModules[index] = { ...module, module_implementation_fee: value };
+                                                        updatedModules[index] = { ...module, one_time_fee: value };
                                                         setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                        saveToDatabase({ ...currentModel, modules: updatedModules });
                                                     }}
+                                                    placeholder="e.g., 500"
                                                 />
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Charged once during implementation
+                                                </p>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2">
@@ -742,10 +747,8 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 module_name: 'New Module',
                                                 pricing_type: 'flat',
                                                 monthly_fee: 0,
-                                                annual_fee: 0,
                                                 one_time_fee: 0,
                                                 module_minimum_fee: 0,
-                                                module_implementation_fee: 0,
                                                 unit_type_id: currentModel.unit_types?.[0]?.id || '',
                                                 slabs: [],
                                                 order: currentModel.modules.length
