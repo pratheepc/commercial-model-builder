@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Model, ModelModule, ModelUnitType, PricingType } from '@/types';
 import { generateProjection, calculateModuleFee } from '@/lib/calculations';
+import { apiDataService } from '@/lib/apiDataService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
@@ -35,6 +36,76 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     const [projectionResults, setProjectionResults] = useState<EditableProjectionRow[]>([]);
     const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
     const [tempValue, setTempValue] = useState<string>('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Auto-save function
+    const saveToDatabase = async (updatedModel: Model) => {
+        if (isSaving) return; // Prevent multiple simultaneous saves
+        
+        setIsSaving(true);
+        try {
+            await apiDataService.updateModel(updatedModel.id, {
+                minimum_fee: updatedModel.minimum_fee,
+                implementation_fee: updatedModel.implementation_fee,
+            });
+            
+            // Save unit types
+            for (const unitType of updatedModel.unit_types || []) {
+                if (unitType.id.startsWith('unit-type-')) {
+                    // New unit type - create it
+                    await apiDataService.createUnitType(updatedModel.id, {
+                        name: unitType.name,
+                        starting_units: unitType.starting_units,
+                        growth_type: unitType.growth_type,
+                        growth_value: unitType.growth_value
+                    });
+                } else {
+                    // Existing unit type - update it
+                    await apiDataService.updateUnitType(unitType.id, {
+                        name: unitType.name,
+                        starting_units: unitType.starting_units,
+                        growth_type: unitType.growth_type,
+                        growth_value: unitType.growth_value
+                    });
+                }
+            }
+            
+            // Save modules
+            for (const module of updatedModel.modules || []) {
+                if (module.id.startsWith('module-')) {
+                    // New module - create it
+                    await apiDataService.addModuleToModel(updatedModel.id, {
+                        module_name: module.module_name,
+                        pricing_type: module.pricing_type,
+                        monthly_fee: module.monthly_fee,
+                        annual_fee: module.annual_fee,
+                        one_time_fee: module.one_time_fee,
+                        module_minimum_fee: module.module_minimum_fee,
+                        module_implementation_fee: module.module_implementation_fee,
+                        unit_type_id: module.unit_type_id,
+                        slabs: module.slabs
+                    });
+                } else {
+                    // Existing module - update it
+                    await apiDataService.updateModuleInModel(module.id, {
+                        module_name: module.module_name,
+                        pricing_type: module.pricing_type,
+                        monthly_fee: module.monthly_fee,
+                        annual_fee: module.annual_fee,
+                        one_time_fee: module.one_time_fee,
+                        module_minimum_fee: module.module_minimum_fee,
+                        module_implementation_fee: module.module_implementation_fee,
+                        unit_type_id: module.unit_type_id,
+                        slabs: module.slabs
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error saving to database:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Generate initial projection
     useEffect(() => {
@@ -205,6 +276,12 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            {isSaving && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                                    Saving...
+                                </div>
+                            )}
                             <Badge variant={currentModel.status === 'active' ? 'default' : 'secondary'}>
                                 {currentModel.status}
                             </Badge>
@@ -233,7 +310,11 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                         <NumberInput
                                             id="minimum-fee"
                                             value={currentModel.minimum_fee}
-                                            onChange={(value) => setCurrentModel(prev => ({ ...prev, minimum_fee: value }))}
+                                            onChange={(value) => {
+                                                const updatedModel = { ...currentModel, minimum_fee: value };
+                                                setCurrentModel(updatedModel);
+                                                saveToDatabase(updatedModel);
+                                            }}
                                             placeholder="0"
                                         />
                                     </div>
