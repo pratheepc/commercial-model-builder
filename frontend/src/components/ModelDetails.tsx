@@ -10,6 +10,6 @@ interface ModelDetailsProps {
 export function ModelDetails({ model, onBack }: ModelDetailsProps) {
 
     // Always render the dynamic playground - simplified flow
-    return <DynamicModelPlayground model={model} onBack={onBack} />;
+    return <DynamicModelPlayground model={model} />;
 
 }
