@@ -510,7 +510,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                         placeholder="From"
                                                                         className="w-20"
                                                                     />
-                                                                    <span className="text-muted-foreground">
+                                                                    <span className="text-muted-foreground whitespace-nowrap">
                                                                         {isLastSlab ? "and above" : "to"}
                                                                     </span>
                                                                     {!isLastSlab && (
@@ -528,7 +528,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                                         />
                                                                     )}
                                                                     {isLastSlab && (
-                                                                        <div className="w-20 text-sm text-muted-foreground flex items-center justify-center">
+                                                                        <div className="w-20 text-sm text-muted-foreground flex items-center justify-center flex-shrink-0">
                                                                             ∞
                                                                         </div>
                                                                     )}
