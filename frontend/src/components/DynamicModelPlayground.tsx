@@ -536,44 +536,36 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </div>
                                                 <div>
                                                     <Label>Unit Type</Label>
-                                                    {currentModel.unit_types && currentModel.unit_types.length > 0 ? (
-                                                        <Select
-                                                            value={module.unit_type_id}
-                                                            onValueChange={(value: string) => {
-                                                                const updatedModules = [...currentModel.modules];
-                                                                updatedModules[index] = { ...module, unit_type_id: value };
-                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                saveToDatabase({ ...currentModel, modules: updatedModules });
-                                                            }}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select Unit Type" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {currentModel.unit_types?.map((unitType) => (
-                                                                    <SelectItem key={unitType.id} value={unitType.id}>
-                                                                        {unitType.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    ) : (
-                                                        <div className="border border-dashed border-muted-foreground/25 rounded-md p-4 text-center">
-                                                            <div className="flex flex-col items-center gap-2">
-                                                                <TrendingUp className="h-6 w-6 text-muted-foreground" />
-                                                                <p className="text-sm text-muted-foreground">No unit types configured</p>
+                                                    <Select
+                                                        value={module.unit_type_id}
+                                                        onValueChange={(value: string) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, unit_type_id: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select Unit Type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {currentModel.unit_types?.map((unitType) => (
+                                                                <SelectItem key={unitType.id} value={unitType.id}>
+                                                                    {unitType.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                            <div className="border-t border-border">
                                                                 <Button
-                                                                    variant="outline"
-                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="w-full justify-start h-8 px-2"
                                                                     onClick={() => setIsUnitTypesOpen(true)}
-                                                                    className="flex items-center gap-2"
                                                                 >
-                                                                    <Plus className="h-4 w-4" />
+                                                                    <Plus className="h-4 w-4 mr-2" />
                                                                     Add Unit Type
                                                                 </Button>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                             </div>
 
