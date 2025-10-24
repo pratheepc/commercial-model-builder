@@ -494,59 +494,71 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     <Label className="text-sm font-medium">Pricing Slabs</Label>
                                                     <div className="space-y-2">
                                                         {module.slabs && module.slabs.length > 0 ? (
-                                                            module.slabs.map((slab, slabIndex) => (
-                                                            <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
-                                                                <NumberInput
-                                                                    value={slab.from_units}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                        updatedSlabs[slabIndex] = { ...slab, from_units: value };
-                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    }}
-                                                                    placeholder="From"
-                                                                    className="w-20"
-                                                                />
-                                                                <span className="text-muted-foreground">to</span>
-                                                                <NumberInput
-                                                                    value={slab.to_units || 0}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                        updatedSlabs[slabIndex] = { ...slab, to_units: value };
-                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    }}
-                                                                    placeholder="To"
-                                                                    className="w-20"
-                                                                />
-                                                                <NumberInput
-                                                                    value={slab.rate_per_unit}
-                                                                    onChange={(value) => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        const updatedSlabs = [...(updatedModules[index].slabs || [])];
-                                                                        updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
-                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    }}
-                                                                    placeholder="Rate"
-                                                                    className="w-24"
-                                                                />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const updatedModules = [...currentModel.modules];
-                                                                        const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
-                                                                        updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
-                                                                        setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                            ))
+                                                            module.slabs.map((slab, slabIndex) => {
+                                                                const isLastSlab = slabIndex === module.slabs.length - 1;
+                                                                return (
+                                                                <div key={slabIndex} className="flex items-center gap-2 p-2 border rounded">
+                                                                    <NumberInput
+                                                                        value={slab.from_units}
+                                                                        onChange={(value) => {
+                                                                            const updatedModules = [...currentModel.modules];
+                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                            updatedSlabs[slabIndex] = { ...slab, from_units: value };
+                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                        }}
+                                                                        placeholder="From"
+                                                                        className="w-20"
+                                                                    />
+                                                                    <span className="text-muted-foreground">
+                                                                        {isLastSlab ? "and above" : "to"}
+                                                                    </span>
+                                                                    {!isLastSlab && (
+                                                                        <NumberInput
+                                                                            value={slab.to_units || 0}
+                                                                            onChange={(value) => {
+                                                                                const updatedModules = [...currentModel.modules];
+                                                                                const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                                updatedSlabs[slabIndex] = { ...slab, to_units: value };
+                                                                                updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                                setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                            }}
+                                                                            placeholder="To"
+                                                                            className="w-20"
+                                                                        />
+                                                                    )}
+                                                                    {isLastSlab && (
+                                                                        <div className="w-20 text-sm text-muted-foreground flex items-center justify-center">
+                                                                            ∞
+                                                                        </div>
+                                                                    )}
+                                                                    <NumberInput
+                                                                        value={slab.rate_per_unit}
+                                                                        onChange={(value) => {
+                                                                            const updatedModules = [...currentModel.modules];
+                                                                            const updatedSlabs = [...(updatedModules[index].slabs || [])];
+                                                                            updatedSlabs[slabIndex] = { ...slab, rate_per_unit: value };
+                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                        }}
+                                                                        placeholder="Rate"
+                                                                        className="w-24"
+                                                                    />
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => {
+                                                                            const updatedModules = [...currentModel.modules];
+                                                                            const updatedSlabs = updatedModules[index].slabs?.filter((_, i) => i !== slabIndex) || [];
+                                                                            updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
+                                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                                );
+                                                            })
                                                         ) : (
                                                             <div className="text-sm text-muted-foreground p-2 border rounded">
                                                                 No slabs configured. Click "Add Slab" to create pricing tiers.
@@ -557,16 +569,22 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                             size="sm"
                                                             onClick={() => {
                                                                 const updatedModules = [...currentModel.modules];
+                                                                const existingSlabs = updatedModules[index].slabs || [];
+                                                                const lastSlab = existingSlabs[existingSlabs.length - 1];
+                                                                
+                                                                // If there are existing slabs, start the new one from where the last one ended
+                                                                const fromUnits = lastSlab ? (lastSlab.to_units || 0) + 1 : 0;
+                                                                
                                                                 const newSlab = {
                                                                     id: `slab-${Date.now()}`,
-                                                                    from_units: 0,
-                                                                    to_units: 1000,
+                                                                    from_units: fromUnits,
+                                                                    to_units: existingSlabs.length === 0 ? 100 : undefined, // Only set to_units for non-last slabs
                                                                     rate_per_unit: 0,
                                                                     fee_type: 'monthly' as const,
                                                                     parent_type: 'module' as const,
                                                                     parent_id: module.id
                                                                 };
-                                                                const updatedSlabs = [...(updatedModules[index].slabs || []), newSlab];
+                                                                const updatedSlabs = [...existingSlabs, newSlab];
                                                                 updatedModules[index] = { ...updatedModules[index], slabs: updatedSlabs };
                                                                 setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
                                                             }}
