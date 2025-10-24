@@ -315,7 +315,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     return (
         <div className="h-screen bg-slate-50 flex flex-col">
             {/* Breadcrumb */}
-            <div className="px-4 py-2 text-sm text-muted-foreground border-b">
+            <div className="py-2 text-sm text-muted-foreground border-b">
                 <div className="flex items-center gap-2">
                     <span>Models</span>
                     <span>/</span>
