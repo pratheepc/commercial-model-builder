@@ -87,7 +87,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     });
                 } else {
                     // Existing module - update it
-                    await apiDataService.updateModuleInModel(module.id, {
+                    await apiDataService.updateModuleInModel(currentModel.id, module.id, {
                         module_name: module.module_name,
                         pricing_type: module.pricing_type,
                         monthly_fee: module.monthly_fee,
@@ -131,15 +131,31 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                 const currentDate = new Date(startDate);
                 currentDate.setMonth(startDate.getMonth() + index);
                 
+                // Calculate module fees for this period
+                const moduleFees: Array<{ module_name: string; fee: number }> = [];
+                let totalModuleFees = 0;
+                
+                for (const module of currentModel.modules) {
+                    const moduleFee = calculateModuleFee(result.units, module);
+                    totalModuleFees += moduleFee;
+                    moduleFees.push({
+                        module_name: module.module_name,
+                        fee: moduleFee
+                    });
+                }
+                
+                // Apply minimum fee
+                const finalFee = Math.max(totalModuleFees, currentModel.minimum_fee);
+                
                 return {
                     period: index + 1,
                     date: currentDate.toISOString(),
                     units: result.units,
-                    total_fee: result.total,
+                    total_fee: finalFee + (index === 0 ? currentModel.implementation_fee : 0),
                     breakdown: {
-                        module_fees: [],
+                        module_fees: moduleFees,
                         minimum_fee: currentModel.minimum_fee,
-                        implementation_fee: currentModel.implementation_fee
+                        implementation_fee: index === 0 ? currentModel.implementation_fee : 0
                     },
                     isEditable: index > 0, // First period is not editable (starting units)
                 };
@@ -722,23 +738,14 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                             Edit any unit count to see real-time calculations
                                         </CardDescription>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <Button
-                                            onClick={generateInitialProjection}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <Calculator className="h-4 w-4" />
-                                            Generate Projection
-                                        </Button>
-                                        <div className="flex items-center gap-4 text-sm">
-                                            <div>
-                                                <span className="text-muted-foreground">Total Revenue:</span>
-                                                <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Avg Monthly:</span>
-                                                <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
-                                            </div>
+                                    <div className="flex items-center gap-4 text-sm">
+                                        <div>
+                                            <span className="text-muted-foreground">Total Revenue:</span>
+                                            <span className="font-semibold ml-1">{formatCurrency(totalRevenue)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">Avg Monthly:</span>
+                                            <span className="font-semibold ml-1">{formatCurrency(averageMonthlyRevenue)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -751,7 +758,12 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                         <p className="text-muted-foreground mb-4">
                                             Add unit types and modules, then click "Generate Projection" to see revenue forecasts.
                                         </p>
-                                        <Button onClick={generateInitialProjection} className="flex items-center gap-2">
+                                        <Button 
+                                            onClick={() => {
+                                                generateInitialProjection();
+                                            }} 
+                                            className="flex items-center gap-2"
+                                        >
                                             <Calculator className="h-4 w-4" />
                                             Generate Projection
                                         </Button>
