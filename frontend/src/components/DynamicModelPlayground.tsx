@@ -511,6 +511,54 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </Button>
                                             </div>
 
+                                            {/* Pricing Type and Unit Type - First Fields */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <Label>Pricing Type</Label>
+                                                    <Select
+                                                        value={module.pricing_type}
+                                                        onValueChange={(value: PricingType) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, pricing_type: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="flat">Flat Rate</SelectItem>
+                                                            <SelectItem value="per_unit">Per Unit</SelectItem>
+                                                            <SelectItem value="slab">Slab Pricing</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label>Unit Type</Label>
+                                                    <Select
+                                                        value={module.unit_type_id}
+                                                        onValueChange={(value: string) => {
+                                                            const updatedModules = [...currentModel.modules];
+                                                            updatedModules[index] = { ...module, unit_type_id: value };
+                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
+                                                            saveToDatabase({ ...currentModel, modules: updatedModules });
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select Unit Type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {currentModel.unit_types?.map((unitType) => (
+                                                                <SelectItem key={unitType.id} value={unitType.id}>
+                                                                    {unitType.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
                                             {/* Fee Configuration based on pricing type */}
                                             {module.pricing_type === 'flat' && (
                                                 <div>
@@ -525,6 +573,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                         }}
                                                         placeholder="e.g., 100"
                                                     />
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Fixed monthly fee for this module
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -541,6 +592,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                         }}
                                                         placeholder="e.g., 2.50"
                                                     />
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Rate charged per unit consumed
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -582,50 +636,6 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                 </p>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <Label>Pricing Type</Label>
-                                                    <Select
-                                                        value={module.pricing_type}
-                                                        onValueChange={(value: PricingType) => {
-                                                            const updatedModules = [...currentModel.modules];
-                                                            updatedModules[index] = { ...module, pricing_type: value };
-                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="flat">Flat</SelectItem>
-                                                            <SelectItem value="per_unit">Per Unit</SelectItem>
-                                                            <SelectItem value="slab">Slab</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div>
-                                                    <Label>Unit Type</Label>
-                                                    <Select
-                                                        value={module.unit_type_id}
-                                                        onValueChange={(value: string) => {
-                                                            const updatedModules = [...currentModel.modules];
-                                                            updatedModules[index] = { ...module, unit_type_id: value };
-                                                            setCurrentModel(prev => ({ ...prev, modules: updatedModules }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select Unit Type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {currentModel.unit_types?.map((unitType) => (
-                                                                <SelectItem key={unitType.id} value={unitType.id}>
-                                                                    {unitType.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
 
                                             {/* Slab Configuration */}
                                             {module.pricing_type === 'slab' && (
