@@ -50,23 +50,23 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
     const [isModulesOpen, setIsModulesOpen] = useState(true);
     const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
-        // Auto-save function
-        const saveToDatabase = async (updatedModel: Model) => {
-            if (isSaving) return; // Prevent multiple simultaneous saves
+    // Auto-save function
+    const saveToDatabase = async (updatedModel: Model) => {
+        if (isSaving) return; // Prevent multiple simultaneous saves
 
-            // Validate that all modules have valid unit types
-            const invalidModules = updatedModel.modules.filter(module => 
-                (module.pricing_type === 'per_unit' || module.pricing_type === 'slab') && 
-                (!module.unit_type_id || module.unit_type_id === '' || module.unit_type_id === 'default')
-            );
-            
-            if (invalidModules.length > 0) {
-                console.warn('Cannot save modules without valid unit types');
-                return;
-            }
+        // Validate that all modules have valid unit types
+        const invalidModules = updatedModel.modules.filter(module =>
+            (module.pricing_type === 'per_unit' || module.pricing_type === 'slab') &&
+            (!module.unit_type_id || module.unit_type_id === '' || module.unit_type_id === 'default')
+        );
 
-            setIsSaving(true);
-            try {
+        if (invalidModules.length > 0) {
+            console.warn('Cannot save modules without valid unit types');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
             await apiDataService.updateModel(updatedModel.id, {
                 minimum_fee: updatedModel.minimum_fee,
                 implementation_fee: updatedModel.implementation_fee,
@@ -164,9 +164,9 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            setCurrentModel(prev => ({ 
-                ...prev, 
-                unit_types: [defaultUnitType] 
+            setCurrentModel(prev => ({
+                ...prev,
+                unit_types: [defaultUnitType]
             }));
         }
     }, [currentModel.id]);
@@ -206,7 +206,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                     // Get the unit type for this module and calculate units
                     const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
                     const moduleUnits = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
-                    
+
                     const moduleFee = calculateModuleFee(moduleUnits, module);
                     totalModuleFees += moduleFee;
                     moduleFees.push({
@@ -250,20 +250,20 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
         generateInitialProjection();
     };
 
-        const calculateGrowthFactor = (unitType: ModelUnitType, periods: number): number => {
-            if (unitType.growth_type === 'fixed') {
-                return 1 + (unitType.growth_value * periods) / unitType.starting_units;
-            } else {
-                return Math.pow(1 + unitType.growth_value / 100, periods);
-            }
-        };
+    const calculateGrowthFactor = (unitType: ModelUnitType, periods: number): number => {
+        if (unitType.growth_type === 'fixed') {
+            return 1 + (unitType.growth_value * periods) / unitType.starting_units;
+        } else {
+            return Math.pow(1 + unitType.growth_value / 100, periods);
+        }
+    };
 
-        const calculateUnitTypeUnits = (unitType: ModelUnitType, periodIndex: number, startDate: string, interval: string): number => {
-            if (periodIndex === 0) return 0; // Month 0 always has 0 units
-            
-            const growthFactor = calculateGrowthFactor(unitType, periodIndex);
-            return Math.round(unitType.starting_units * growthFactor);
-        };
+    const calculateUnitTypeUnits = (unitType: ModelUnitType, periodIndex: number, startDate: string, interval: string): number => {
+        if (periodIndex === 0) return 0; // Month 0 always has 0 units
+
+        const growthFactor = calculateGrowthFactor(unitType, periodIndex);
+        return Math.round(unitType.starting_units * growthFactor);
+    };
 
     const calculateTotalFeeForPeriod = (units: number, model: Model, periodIndex: number) => {
         let totalFee = 0;
@@ -274,7 +274,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
             // Get the unit type for this module and calculate units
             const moduleUnitType = model.unit_types?.find(ut => ut.id === module.unit_type_id);
             const moduleUnits = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, periodIndex, projectionConfig.startDate, projectionConfig.interval) : 0;
-            
+
             const moduleFee = calculateModuleFee(moduleUnits, module);
             totalFee += moduleFee;
             moduleFees.push({
@@ -1061,9 +1061,9 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                     projectionConfig.startDate,
                                                                     projectionConfig.interval
                                                                 );
-                                                                
+
                                                                 return (
-                                                                    <TableCell key={index} className="text-center">
+                                                                    <TableCell key={index} className="text-right">
                                                                         {editingCell?.row === index && editingCell?.field === `units-${unitType.id}` ? (
                                                                             <Input
                                                                                 value={tempValue}
@@ -1071,11 +1071,11 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                                 onKeyDown={handleKeyPress}
                                                                                 onBlur={handleCellSave}
                                                                                 autoFocus
-                                                                                className="w-20 text-center"
+                                                                                className="w-20 text-right"
                                                                             />
                                                                         ) : (
                                                                             <div
-                                                                                className={`cursor-pointer hover:bg-muted p-1 rounded ${result.isEditable ? 'hover:border' : ''}`}
+                                                                                className={`cursor-pointer hover:bg-muted p-1 rounded text-sm ${result.isEditable ? 'hover:border' : ''}`}
                                                                                 onClick={() => result.isEditable && handleCellEdit(index, `units-${unitType.id}`, unitTypeUnits)}
                                                                             >
                                                                                 {formatNumber(unitTypeUnits)}
@@ -1093,8 +1093,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             Model Min Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-center">
-                                                                {formatCurrency(result.breakdown.minimum_fee)}
+                                                            <TableCell key={index} className="text-right">
+                                                                <div className="text-sm">
+                                                                    {formatCurrency(result.breakdown.minimum_fee)}
+                                                                </div>
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
@@ -1105,8 +1107,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             Model Impl Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-center">
-                                                                {formatCurrency(result.breakdown.implementation_fee)}
+                                                            <TableCell key={index} className="text-right">
+                                                                <div className="text-sm">
+                                                                    {formatCurrency(result.breakdown.implementation_fee)}
+                                                                </div>
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
@@ -1120,7 +1124,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                     {module.module_name}
                                                                 </TableCell>
                                                                 {projectionResults.map((_, index) => (
-                                                                    <TableCell key={index} className="text-center font-bold text-primary">
+                                                                    <TableCell key={index} className="text-right font-bold text-primary">
                                                                         —
                                                                     </TableCell>
                                                                 ))}
@@ -1133,8 +1137,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                         Monthly Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-center">
-                                                                            {formatCurrency(module.monthly_fee || 0)}
+                                                                        <TableCell key={index} className="text-right">
+                                                                            <div className="text-sm">
+                                                                                {formatCurrency(module.monthly_fee || 0)}
+                                                                            </div>
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
@@ -1152,8 +1158,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                         const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
                                                                         
                                                                         return (
-                                                                            <TableCell key={index} className="text-center">
-                                                                                {formatCurrency(module.monthly_fee || 0)} × {formatNumber(units)}
+                                                                            <TableCell key={index} className="text-right">
+                                                                                <div className="text-sm">
+                                                                                    {formatCurrency(module.monthly_fee || 0)} × {formatNumber(units)}
+                                                                                </div>
                                                                             </TableCell>
                                                                         );
                                                                     })}
@@ -1171,7 +1179,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                             // Get the unit type for this module
                                                                             const moduleUnitType = currentModel.unit_types?.find(ut => ut.id === module.unit_type_id);
                                                                             const units = moduleUnitType ? calculateUnitTypeUnits(moduleUnitType, index, projectionConfig.startDate, projectionConfig.interval) : 0;
-                                                                            
+
                                                                             // Calculate fee for this specific slab
                                                                             const slabStart = slab.from_units;
                                                                             const slabEnd = slab.to_units || units;
@@ -1184,8 +1192,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                             }
 
                                                                             return (
-                                                                                <TableCell key={index} className="text-center">
-                                                                                    {formatCurrency(slabFee)}
+                                                                                <TableCell key={index} className="text-right">
+                                                                                    <div className="text-sm">
+                                                                                        {formatCurrency(slabFee)}
+                                                                                    </div>
                                                                                 </TableCell>
                                                                             );
                                                                         })}
@@ -1200,8 +1210,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                         Module Min Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-center">
-                                                                            {formatCurrency(module.module_minimum_fee || 0)}
+                                                                        <TableCell key={index} className="text-right">
+                                                                            <div className="text-sm">
+                                                                                {formatCurrency(module.module_minimum_fee || 0)}
+                                                                            </div>
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
@@ -1214,8 +1226,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                         Setup Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
-                                                                        <TableCell key={index} className="text-center">
-                                                                            {index === 0 ? formatCurrency(module.one_time_fee || 0) : formatCurrency(0)}
+                                                                        <TableCell key={index} className="text-right">
+                                                                            <div className="text-sm">
+                                                                                {index === 0 ? formatCurrency(module.one_time_fee || 0) : formatCurrency(0)}
+                                                                            </div>
                                                                         </TableCell>
                                                                     ))}
                                                                 </TableRow>
@@ -1229,8 +1243,10 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                                 {projectionResults.map((result, index) => {
                                                                     const moduleFee = result.breakdown.module_fees.find(mf => mf.module_name === module.module_name);
                                                                     return (
-                                                                        <TableCell key={index} className="text-center font-semibold">
-                                                                            {formatCurrency(moduleFee?.fee || 0)}
+                                                                        <TableCell key={index} className="text-right font-semibold">
+                                                                            <div className="text-sm">
+                                                                                {formatCurrency(moduleFee?.fee || 0)}
+                                                                            </div>
                                                                         </TableCell>
                                                                     );
                                                                 })}
@@ -1240,12 +1256,14 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                     {/* Grand Total Row */}
                                                     <TableRow className="border-t-2 border-primary bg-primary/5">
-                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-lg">
+                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-sm">
                                                             Grand Total
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
-                                                            <TableCell key={index} className="text-center font-bold text-lg">
-                                                                {formatCurrency(result.total_fee)}
+                                                            <TableCell key={index} className="text-right font-bold">
+                                                                <div className="text-sm">
+                                                                    {formatCurrency(result.total_fee)}
+                                                                </div>
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
