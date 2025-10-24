@@ -1050,9 +1050,9 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                     {/* Unit Types - Separate rows for each unit type */}
                                                     {currentModel.unit_types?.map((unitType) => (
                                                         <TableRow key={unitType.id}>
-                                                            <TableCell className="sticky left-0 bg-white z-10 font-medium">
-                                                                {unitType.name} Units
-                                                            </TableCell>
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-left">
+                                                            {unitType.name} Units
+                                                        </TableCell>
                                                             {projectionResults.map((result, index) => {
                                                                 // Calculate units for this specific unit type
                                                                 const unitTypeUnits = calculateUnitTypeUnits(
@@ -1089,7 +1089,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                     {/* Model Minimum Fee Row */}
                                                     <TableRow>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm">
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
                                                             Model Min Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
@@ -1103,7 +1103,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                     {/* Model Implementation Fee Row */}
                                                     <TableRow>
-                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm">
+                                                        <TableCell className="sticky left-0 bg-white z-10 font-medium text-sm text-left">
                                                             Model Impl Fee
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
@@ -1120,7 +1120,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                         <React.Fragment key={module.id}>
                                                             {/* Module Header */}
                                                             <TableRow className="bg-muted/30">
-                                                                <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary">
+                                                                <TableCell className="sticky left-0 bg-muted/30 z-10 font-bold text-primary text-left">
                                                                     {module.module_name}
                                                                 </TableCell>
                                                                 {projectionResults.map((_, index) => (
@@ -1133,7 +1133,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             {/* Module Monthly Fee */}
                                                             {module.pricing_type === 'flat' && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
                                                                         Monthly Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
@@ -1149,7 +1149,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             {/* Module Per-Unit Fee */}
                                                             {module.pricing_type === 'per_unit' && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
                                                                         Rate per Unit
                                                                     </TableCell>
                                                                     {projectionResults.map((result, index) => {
@@ -1172,7 +1172,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             {module.pricing_type === 'slab' && module.slabs && module.slabs.length > 0 && (
                                                                 module.slabs.map((slab, slabIndex) => (
                                                                     <TableRow key={slabIndex}>
-                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                        <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
                                                                             Slab {slabIndex + 1} ({slab.from_units}-{slab.to_units || '∞'})
                                                                         </TableCell>
                                                                         {projectionResults.map((result, index) => {
@@ -1206,7 +1206,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             {/* Module Minimum Fee */}
                                                             {module.module_minimum_fee && module.module_minimum_fee > 0 && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
                                                                         Module Min Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
@@ -1222,7 +1222,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                                                             {/* Module One-time Fee */}
                                                             {module.one_time_fee && module.one_time_fee > 0 && (
                                                                 <TableRow>
-                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm">
+                                                                    <TableCell className="sticky left-0 bg-white z-10 pl-6 text-sm text-left">
                                                                         Setup Fee
                                                                     </TableCell>
                                                                     {projectionResults.map((_, index) => (
@@ -1237,7 +1237,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                             {/* Module Total */}
                                                             <TableRow className="border-b border-muted">
-                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm">
+                                                                <TableCell className="sticky left-0 bg-white z-10 font-semibold pl-4 text-sm text-left">
                                                                     {module.module_name} Total
                                                                 </TableCell>
                                                                 {projectionResults.map((result, index) => {
@@ -1256,7 +1256,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
 
                                                     {/* Grand Total Row */}
                                                     <TableRow className="border-t-2 border-primary bg-primary/5">
-                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-sm">
+                                                        <TableCell className="sticky left-0 bg-primary/5 z-10 font-bold text-sm text-left">
                                                             Grand Total
                                                         </TableCell>
                                                         {projectionResults.map((result, index) => (
