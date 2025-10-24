@@ -1,0 +1,33 @@
+{
+  "name": "commercial-model-builder-backend",
+  "version": "1.0.0",
+  "description": "Backend API for the Commercial Model Builder",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "mongoose": "^8.19.2",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "pricing",
+    "model",
+    "saas",
+    "api"
+  ],
+  "author": "Commercial Model Builder Team",
+  "license": "MIT"
+}
