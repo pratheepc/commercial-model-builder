@@ -316,8 +316,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
     return (
         <div className="h-screen bg-slate-50 flex flex-col">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="px-6 py-4">
+            <div className="bg-white border-b px-4 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
@@ -476,7 +475,6 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                             </Badge>
                         </div>
                     </div>
-                </div>
             </div>
 
             {/* Main Content */}
