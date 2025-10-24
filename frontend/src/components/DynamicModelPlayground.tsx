@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Trash2, Calculator, TrendingUp, Package, Settings, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, Package, Settings, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface DynamicModelPlaygroundProps {
@@ -322,19 +322,18 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                     <span className="text-foreground font-medium">{currentModel.name}</span>
                 </div>
             </div>
-            
+
             {/* Header */}
             <div className="border-b px-4 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-2">
-                                    <Calculator className="h-6 w-6" />
-                                    {currentModel.name} - Dynamic Playground
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div>
+                                <h1 className="text-2xl font-bold">
+                                    {currentModel.name}
                                 </h1>
-                                <p className="text-muted-foreground">{currentModel.description}</p>
-                            </div>
+                            <p className="text-muted-foreground">{currentModel.description}</p>
                         </div>
+                    </div>
                     <div className="flex items-center gap-4">
                         <Button
                             variant="outline"
@@ -898,8 +897,7 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <Calculator className="h-5 w-5" />
+                                        <CardTitle>
                                             Dynamic Revenue Projection
                                         </CardTitle>
                                         <CardDescription>
@@ -989,7 +987,6 @@ export function DynamicModelPlayground({ model }: DynamicModelPlaygroundProps) {
                             <CardContent className="p-0">
                                 {projectionResults.length === 0 ? (
                                     <div className="p-8 text-center">
-                                        <Calculator className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                                         <h3 className="text-lg font-semibold mb-2">No Projections Available</h3>
                                         <p className="text-muted-foreground mb-4">
                                             Add unit types and modules to see automatic revenue projections.
