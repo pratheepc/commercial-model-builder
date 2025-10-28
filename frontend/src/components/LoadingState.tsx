@@ -12,6 +12,9 @@ interface LoadingStateProps {
 export function LoadingState({ children }: LoadingStateProps) {
     const { isLoading, error, lastUpdated, refreshAll, clearError } = useApp();
 
+    // Debug logging
+    console.log('LoadingState render:', { isLoading, error, lastUpdated });
+
     if (isLoading && !lastUpdated) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -22,6 +25,9 @@ export function LoadingState({ children }: LoadingStateProps) {
                             <h3 className="text-lg font-semibold">Loading...</h3>
                             <p className="text-sm text-muted-foreground">
                                 Fetching your pricing models and modules
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Debug: isLoading={isLoading.toString()}, lastUpdated={lastUpdated?.toString() || 'null'}
                             </p>
                         </div>
                     </CardContent>

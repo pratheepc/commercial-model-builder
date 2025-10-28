@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CreateModelData, SUPPORTED_CURRENCIES } from '@/types';
 
 const modelSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     description: z.string().optional(),
     currency: z.string().min(1, 'Currency is required'),
+    platform_fee_in_p0: z.boolean().optional(),
 });
 
 interface ModelFormProps {
@@ -38,6 +40,7 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
             name: '',
             description: '',
             currency: 'USD',
+            platform_fee_in_p0: true,
         }
     });
 
@@ -49,6 +52,7 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
                 name: '',
                 description: '',
                 currency: 'USD',
+                platform_fee_in_p0: true,
             });
         }
     }, [initialData, reset]);
@@ -120,6 +124,24 @@ export function ModelForm({ isOpen, onClose, onSubmit, initialData, title }: Mod
                         {errors.currency && (
                             <p className="text-sm text-destructive">{errors.currency.message}</p>
                         )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="platform-fee-p0"
+                                checked={watch('platform_fee_in_p0')}
+                                onCheckedChange={(checked) => {
+                                    setValue('platform_fee_in_p0', checked as boolean);
+                                }}
+                            />
+                            <Label htmlFor="platform-fee-p0" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Charge platform fee in P0 (month 0)
+                            </Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            When enabled, the platform fee will be charged in the first month (P0). When disabled, it will only be charged from P1 onwards.
+                        </p>
                     </div>
 
                     <DialogFooter>

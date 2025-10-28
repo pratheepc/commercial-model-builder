@@ -33,14 +33,17 @@ export function useAppState(): AppState & AppStateActions {
   });
 
   const loadInitialData = useCallback(async () => {
+    console.log('loadInitialData: Starting to load data...');
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      console.log('loadInitialData: Making API calls...');
       const [models, moduleCatalogue] = await Promise.all([
         apiDataService.getModels(),
         apiDataService.getModuleCatalogue(),
       ]);
 
+      console.log('loadInitialData: API calls successful:', { models: models.length, moduleCatalogue: moduleCatalogue.length });
       setState(prev => ({
         ...prev,
         models,

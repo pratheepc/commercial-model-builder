@@ -78,6 +78,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             await apiDataService.updateModel(updatedModel.id, {
                 minimum_fee: updatedModel.minimum_fee,
                 implementation_fee: updatedModel.implementation_fee,
+                platform_fee_in_p0: updatedModel.platform_fee_in_p0,
             });
 
             // Save unit types
@@ -223,8 +224,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     });
                 }
 
-                // Apply minimum fee
-                const finalFee = Math.max(totalModuleFees, currentModel.minimum_fee);
+                // Apply minimum fee (platform fee) based on P0 setting
+                const shouldApplyPlatformFee = currentModel.platform_fee_in_p0 || index > 0;
+                const finalFee = shouldApplyPlatformFee ? Math.max(totalModuleFees, currentModel.minimum_fee) : totalModuleFees;
 
                 // Implementation fee applies to both month 0 and month 1
                 const hasImplementationFee = index === 0 || index === 1;
@@ -236,7 +238,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                     total_fee: finalFee + (hasImplementationFee ? currentModel.implementation_fee : 0),
                     breakdown: {
                         module_fees: moduleFees,
-                        minimum_fee: currentModel.minimum_fee,
+                        minimum_fee: shouldApplyPlatformFee ? currentModel.minimum_fee : 0,
                         implementation_fee: hasImplementationFee ? currentModel.implementation_fee : 0
                     },
                     isEditable: index > 0, // First period is not editable (starting units)
@@ -357,8 +359,9 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             });
         }
 
-        // Add minimum fee
-        const minimumFee = model.minimum_fee;
+        // Add minimum fee (platform fee) based on P0 setting
+        const shouldApplyPlatformFee = model.platform_fee_in_p0 || periodIndex > 0;
+        const minimumFee = shouldApplyPlatformFee ? model.minimum_fee : 0;
         totalFee = Math.max(totalFee, minimumFee);
 
         // Implementation fee applies to both month 0 and month 1
@@ -369,7 +372,7 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
             total: totalFee + implementationFee,
             breakdown: {
                 module_fees: moduleFees,
-                minimum_fee: minimumFee,
+                minimum_fee: shouldApplyPlatformFee ? model.minimum_fee : 0,
                 implementation_fee: implementationFee
             }
         };
@@ -1217,6 +1220,25 @@ export function DynamicModelPlayground({ model, onBack }: DynamicModelPlayground
                                                     />
                                                 </div>
                                             </div>
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="platform-fee-p0-config"
+                                                    checked={currentModel.platform_fee_in_p0}
+                                                    onChange={(e) => {
+                                                        const updatedModel = { ...currentModel, platform_fee_in_p0: e.target.checked };
+                                                        setCurrentModel(updatedModel);
+                                                        saveToDatabase(updatedModel);
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <Label htmlFor="platform-fee-p0-config" className="text-sm font-medium">
+                                                    Charge platform fee in P0 (month 0)
+                                                </Label>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                When enabled, the platform fee will be charged in the first month (P0). When disabled, it will only be charged from P1 onwards.
+                                            </p>
                                         </CardContent>
                                     </CollapsibleContent>
                                 </Card>

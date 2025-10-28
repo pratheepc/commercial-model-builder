@@ -33,6 +33,7 @@ export interface Model {
   currency: string;
   minimum_fee: number;
   implementation_fee: number;
+  platform_fee_in_p0: boolean; // Whether platform fee should be charged in P0
   status: 'active' | 'archived';
   created_at: string;
   updated_at: string;
@@ -120,6 +121,7 @@ export interface CreateModelData {
   name: string;
   description?: string;
   currency: string;
+  platform_fee_in_p0?: boolean;
 }
 
 export interface CreateModuleData {

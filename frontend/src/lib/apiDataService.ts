@@ -10,6 +10,7 @@ function convertMongoModelToModel(mongoModel: any): Model {
     currency: mongoModel.currency || 'USD',
     minimum_fee: mongoModel.minimum_fee || 0,
     implementation_fee: mongoModel.implementation_fee || 0,
+    platform_fee_in_p0: mongoModel.platform_fee_in_p0 !== undefined ? mongoModel.platform_fee_in_p0 : true,
     status: mongoModel.status || 'active',
     created_at: mongoModel.createdAt || new Date().toISOString(),
     updated_at: mongoModel.updatedAt || new Date().toISOString(),
@@ -77,7 +78,9 @@ export const apiDataService = {
   // Model operations
   getModels: async (): Promise<Model[]> => {
     try {
+      console.log('apiDataService.getModels: Starting API call...');
       const mongoModels = await modelsApi.getAll();
+      console.log('apiDataService.getModels: API call successful, received:', mongoModels.length, 'models');
       return mongoModels.map(convertMongoModelToModel);
     } catch (error) {
       console.error('Error fetching models:', error);
@@ -191,7 +194,9 @@ export const apiDataService = {
   // Module Catalogue operations
   getModuleCatalogue: async (): Promise<ModuleCatalogue[]> => {
     try {
+      console.log('apiDataService.getModuleCatalogue: Starting API call...');
       const mongoModules = await moduleCatalogueApi.getAll();
+      console.log('apiDataService.getModuleCatalogue: API call successful, received:', mongoModules.length, 'modules');
       return mongoModules.map(convertMongoModuleToCatalogue);
     } catch (error) {
       console.error('Error fetching module catalogue:', error);

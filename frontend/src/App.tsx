@@ -16,6 +16,22 @@ function AppContent() {
     const [currentView, setCurrentView] = useState<'models' | 'details' | 'catalogue'>('models');
     const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 
+    // Debug: Test API connectivity
+    React.useEffect(() => {
+        console.log('AppContent: Testing API connectivity...');
+        fetch('http://localhost:3001/api/models')
+            .then(response => {
+                console.log('API test response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('API test data received:', data);
+            })
+            .catch(error => {
+                console.error('API test error:', error);
+            });
+    }, []);
+
     const handleViewModel = (model: Model) => {
         setSelectedModel(model);
         setCurrentView('details');

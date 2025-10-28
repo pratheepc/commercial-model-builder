@@ -27,6 +27,7 @@ export class ModelService {
       const newModel = new Model({
         minimum_fee: 0,
         implementation_fee: 0,
+        platform_fee_in_p0: true, // Default to true
         status: 'active',
         modules: [],
         ...modelData

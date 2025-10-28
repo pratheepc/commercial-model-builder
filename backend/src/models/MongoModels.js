@@ -64,6 +64,7 @@ const modelSchema = new mongoose.Schema({
   currency: { type: String, required: true, default: 'USD' },
   minimum_fee: { type: Number, default: 0 },
   implementation_fee: { type: Number, default: 0 },
+  platform_fee_in_p0: { type: Boolean, default: true }, // Whether platform fee should be charged in P0
   status: { 
     type: String, 
     enum: ['active', 'inactive', 'draft'], 
